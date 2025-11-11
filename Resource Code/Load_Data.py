@@ -34,7 +34,7 @@ class DataLoader:
         self._project_root: Path = Path(project_root) if project_root else default_root
 
         # tên thư mục/file chuẩn hóa để dễ đổi nếu cần
-        self._dataset_dir = "Dataset for Project"
+        self._dataset_dir = "Data"
         self._set2023 = "Data_Set_2023"
         self._set2024 = "Data_Set_2024"
         self._set2025 = "Data_Set_2025"
