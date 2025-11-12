@@ -1,3 +1,7 @@
+
+
+# =====================================================================================================
+# Tuần tự thực hiện:  10–17/11/2025
 # Problem: Trong quá trình tiền xử lý dữ liệu, bây h chúng ta cần phải chuẩn hóa tên cột cho thống nhất để sử dụng cho đường dài:
 - Trong đó:
 Data 2023 có các cột: sbd,toan,ngu_van,ngoai_ngu,vat_li,hoa_hoc,sinh_hoc,lich_su,dia_li,gdcd,ma_ngoai_ngu
@@ -11,3 +15,4 @@ Nên chuẩn hóa tên cột theo dạng đơn như 2023,2024 hay là theo dạn
 Dùng map để ánh xạ tên cột -> sau đó chuẩn hóa về 1 dạng tên cột nhất định để sử dụng
 Dùng set với STT và SOBAODANH ở năm 2025
 Thêm cột vào data frame 2023, 2024 với các môn đã được thêm ở năm 2025
+
