@@ -14,17 +14,18 @@ class DataLoader:
         thpt2023_csv_path, thpt2024_csv_path, thpt2025_ct2006_xlsx_path, thpt2025_ct2018_xlsx_path
     """
     
+    # Slots: Cố định các thuộc tính có thể sử dụng, để tiết kiệm bộ nhớ. Không thể thêm thuộc tính mới ngoài danh sách này.
     __slots__ = (
-        "_project_root",
-        "_dataset_dir",
-        "_set2023",
-        "_set2024",
-        "_set2025",
-        "_f_2023_ct2006",
-        "_f_2024_ct2006",
-        "_f_2025_ct2006",
-        "_f_2025_ct2018",
-    )
+        "_project_root",                        # thư mục gốc của project
+        "_dataset_dir",                         # tên thư mục chứa dữ liệu    
+        "_set2023",                             # tên thư mục dữ liệu năm 2023
+        "_set2024",                             # tên thư mục dữ liệu năm 2024
+        "_set2025",                             # tên thư mục dữ liệu năm 2025
+        "_f_2023_ct2006",                       # tên file dữ liệu năm 2023
+        "_f_2024_ct2006",                       # tên file dữ liệu năm 2024
+        "_f_2025_ct2006",                       # tên file dữ liệu năm 2025 CT2006
+        "_f_2025_ct2018",                       # tên file dữ liệu năm 2025 CT2018  
+    )   
 
     # -------- Khởi tạo --------
     def __init__(self, project_root: Path | str | None = None):
@@ -35,6 +36,7 @@ class DataLoader:
 
         # tên thư mục/file chuẩn hóa để dễ đổi nếu cần
         self._dataset_dir = "Data"
+        
         self._set2023 = "Data_Set_2023"
         self._set2024 = "Data_Set_2024"
         self._set2025 = "Data_Set_2025"
@@ -85,7 +87,7 @@ class DataLoader:
 
     # -------- Method: load dữ liệu --------
     def load_data(self):
-        # kiểm tra tồn tại để báo lỗi sớm & rõ
+        # kiểm tra tồn tại file để báo lỗi sớm & rõ
         for p in (
             self.thpt2023_ct2006_csv_path,
             self.thpt2024_ct2006_csv_path,
