@@ -1,4 +1,4 @@
-from Load_Data import DataLoader
+from Module.Load_Data import DataLoader
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -209,6 +209,7 @@ class DataProcessor:
     # ------- Xây dựng hàm để thực hiện toàn bộ quy trình xử lý --------
     def process_all(self) -> None:
         """Thực hiện toàn bộ quy trình xử lý dữ liệu."""
+        self.loader.load_data()
         self._preprocess_data()
         self._normalize_columns()
         self._build_combined_data()
