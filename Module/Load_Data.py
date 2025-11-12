@@ -1,10 +1,13 @@
 # Khai báo thư viện
 from __future__ import annotations
+from importlib.resources import path
 from pathlib import Path
 import pandas as pd
 
 # Lớp để quản lý việc load dữ liệu
 class DataLoader:
+    # ==================== INTERNAL PRIVATE METHODS: XỬ LÝ DỮ LIỆU =====================
+    # ----------------------- Khai báo và thiết lập thuộc tính -------------------------
     """Load THPT datasets from a project folder.
 
     Attributes (public API):
@@ -85,27 +88,57 @@ class DataLoader:
             self.project_root / self._dataset_dir / self._set2025 / self._f_2025_ct2018
         )
 
+    # ====================
     # -------- Method: load dữ liệu --------
-    def load_data(self):
-        # kiểm tra tồn tại file để báo lỗi sớm & rõ
-        for p in (
+    # Kiểm tra sự tồn tại của file hoặc danh sách file
+    def _check_file_exists(self, paths: Path | list[Path]) -> None:
+        """ Kiểm tra sự tồn tại của file hoặc danh sách file.
+        Args: 
+            paths (Path | list[Path]): Đường dẫn file hoặc danh sách đường dẫn file.
+        Raises: 
+            FileNotFoundError: Nếu có file không tồn tại.
+        """
+        
+        paths = [paths] if isinstance(paths, Path) else paths
+        missing = [p for p in paths if not p.exists()]
+        if missing:
+            raise FileNotFoundError(f"Các file không tồn tại: {', '.join(map(str, missing))}")
+
+    # Đọc dữ liệu từ các file
+    def _read_file(self, path: Path) -> pd.DataFrame:
+        """ Đọc dữ liệu từ file CSV hoặc Excel.
+        Args:
+            path (Path): Đường dẫn file.
+        Returns:
+            pd.DataFrame: Dữ liệu đã đọc.
+        Raises:
+            ValueError: Nếu định dạng file không được hỗ trợ.
+        """
+        if path.suffix == ".csv":
+            return pd.read_csv(path, encoding="utf-8")
+        elif path.suffix in (".xls", ".xlsx"):
+            return pd.read_excel(path, engine="openpyxl")
+        else:
+            raise ValueError(f"Định dạng file không hỗ trợ: {path.suffix}")
+    
+    # Load dữ liệu từ tất cả file
+    def _load_data(self):
+        """Load tất cả dữ liệu từ các file."""
+        paths = [
             self.thpt2023_ct2006_csv_path,
             self.thpt2024_ct2006_csv_path,
             self.thpt2025_ct2006_xlsx_path,
             self.thpt2025_ct2018_xlsx_path,
-        ):
-            if not p.exists():
-                raise FileNotFoundError(f"Không tìm thấy file: {p}")
-
-        # đọc dữ liệu vào DataFrames
-        df_2023_ct2006 = pd.read_csv(self.thpt2023_ct2006_csv_path, encoding="utf-8")
-        df_2024_ct2006 = pd.read_csv(self.thpt2024_ct2006_csv_path, encoding="utf-8")
-        df_2025_ct2006 = pd.read_excel(
-            self.thpt2025_ct2006_xlsx_path, engine="openpyxl"
-        )
-        df_2025_ct2018 = pd.read_excel(
-            self.thpt2025_ct2018_xlsx_path, engine="openpyxl"
-        )
-
-        # trả về 4 DataFrame
-        return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018
+        ]
+        self._check_file_exists(paths)
+        return tuple(self._read_file(p) for p in paths)
+    
+    # ==================== PUBLIC METHODS: XỬ LÝ DỮ LIỆU =====================
+    def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Load tất cả dữ liệu từ các file và trả về dưới dạng tuple.
+        
+        Returns:
+            tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: 
+                Dữ liệu năm 2023, 2024, 2025 theo CT2006 và 2025 theo CT2018.
+        """
+        return self._load_data()

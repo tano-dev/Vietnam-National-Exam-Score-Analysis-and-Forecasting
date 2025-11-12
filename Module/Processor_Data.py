@@ -5,7 +5,7 @@ import numpy as np
 
 class DataProcessor:
     # ==================== INTERNAL PRIVATE METHODS: XỬ LÝ DỮ LIỆU =====================
-    # ------- Hoàn chỉnh dữ liệu --------
+    # ----------------------- Khai báo và thiết lập thuộc tính -------------------------
     """Tiền xử lý dữ liệu THPT đã load từ DataLoader.
     Attributes (public API):
         data_2023        (pd.DataFrame): Dữ liệu năm 2023 theo CT2006.
@@ -123,13 +123,14 @@ class DataProcessor:
         self.load_all_data()
 
     def load_all_data(self) -> None:
-        """Load tất cả dữ liệu từ các file."""
-        # Gọi Setter tương ứng để load dữ liệu vào DataFrames
-        self.data_2023        = pd.read_csv(self.loader.thpt2023_ct2006_csv_path)
-        self.data_2024        = pd.read_csv(self.loader.thpt2024_ct2006_csv_path)
-        self.data_2025_ct2006 = pd.read_excel(self.loader.thpt2025_ct2006_xlsx_path)
-        self.data_2025_ct2018 = pd.read_excel(self.loader.thpt2025_ct2018_xlsx_path)
-    
+        """Load tất cả dữ liệu từ DataLoader."""
+        (
+            self.data_2023,
+            self.data_2024,
+            self.data_2025_ct2006,
+            self.data_2025_ct2018
+        ) = self.loader.load_data()
+
     # ==================== INTERNAL PRIVATE METHODS: XỬ LÝ DỮ LIỆU =====================
     # ------- Method: Các hàm xử lý dữ liệu --------
     # Xứ lý giá trị thiếu của dữ liệu 
