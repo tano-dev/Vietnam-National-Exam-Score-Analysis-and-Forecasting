@@ -36,8 +36,7 @@ class DataProcessor:
         if not isinstance(value, DataLoader):
             raise TypeError("loader phải là một instance của DataLoader.")
         self._loader = value
-        self.load_all_data()  # Tải lại dữ liệu khi thay đổi loader
-    
+        
     # Setter Getter: DataFrames
     # ------- Data 2023 -------
     @property
@@ -46,11 +45,25 @@ class DataProcessor:
 
     @data_2023.setter
     def data_2023(self, value: pd.DataFrame) -> None:
+        # 1) Kiểm tra kiểu và đầu vào
         if not isinstance(value, pd.DataFrame):
-            raise TypeError("data_2023 phải là một pandas DataFrame.")
+            raise TypeError("data_2023 phải là pandas DataFrame.")
         if value.empty:
-            print("[Cảnh báo] data_2023 là DataFrame rỗng.")
-        self._data_2023 = value
+            # Nếu bạn muốn “luôn set dữ liệu thật”, cấm gán rỗng:
+            raise ValueError("Giá trị gán cho data_2023 không được rỗng.")
+
+        # 2) Kiểm tra TRẠNG THÁI LƯU TRỮ (_data_2023)
+        # - None: chưa gán lần nào → cho gán
+        # - DataFrame không rỗng: đã có dữ liệu → chặn
+        # - DataFrame rỗng: nếu bạn coi là “đã có” thì chặn; nếu coi là “chưa có”, thì cho gán
+        if self._data_2023 is None:
+            self._data_2023 = value.copy()
+        elif isinstance(self._data_2023, pd.DataFrame) and self._data_2023.empty:
+            # Nếu bạn muốn “rỗng xem như chưa có”, cho gán:
+            self._data_2023 = value.copy()
+        else:
+            # Đã có dữ liệu → không cho ghi đè
+            raise AttributeError("data_2023 đã có dữ liệu, không cho phép gán lần nữa.")
 
     # ------- Data 2024 -------
     @property
@@ -59,11 +72,25 @@ class DataProcessor:
     
     @data_2024.setter
     def data_2024(self, value: pd.DataFrame) -> None:
+        # 1) Kiểm tra kiểu và đầu vào
         if not isinstance(value, pd.DataFrame):
-            raise TypeError("data_2024 phải là một pandas DataFrame.")
+            raise TypeError("data_2024  phải là pandas DataFrame.")
         if value.empty:
-            print("[Cảnh báo] data_2024 là DataFrame rỗng.")
-        self._data_2024 = value
+            # Nếu bạn muốn “luôn set dữ liệu thật”, cấm gán rỗng:
+            raise ValueError("Giá trị gán cho data_2024 không được rỗng.")
+
+        # 2) Kiểm tra TRẠNG THÁI LƯU TRỮ (_data_2024)
+        # - None: chưa gán lần nào → cho gán
+        # - DataFrame không rỗng: đã có dữ liệu → chặn
+        # - DataFrame rỗng: nếu bạn coi là “đã có” thì chặn; nếu coi là “chưa có”, thì cho gán
+        if self._data_2024 is None:
+            self._data_2024 = value.copy()
+        elif isinstance(self._data_2024, pd.DataFrame) and self._data_2024.empty:
+            # Nếu bạn muốn “rỗng xem như chưa có”, cho gán:
+            self._data_2024 = value.copy()
+        else:
+            # Đã có dữ liệu → không cho ghi đè
+            raise AttributeError("data_2024 đã có dữ liệu, không cho phép gán lần nữa.")
 
     # ------- Data 2025 CT2006 -------
     @property
@@ -72,11 +99,26 @@ class DataProcessor:
     
     @data_2025_ct2006.setter
     def data_2025_ct2006(self, value: pd.DataFrame) -> None:
+        # 1) Kiểm tra kiểu và đầu vào
         if not isinstance(value, pd.DataFrame):
-            raise TypeError("data_2025_ct2006 phải là một pandas DataFrame.")
+            raise TypeError("data_2025_ct2006 phải là pandas DataFrame.")
         if value.empty:
-            print("[Cảnh báo] data_2025_ct2006 là DataFrame rỗng.")
-        self._data_2025_ct2006 = value
+            # Nếu bạn muốn “luôn set dữ liệu thật”, cấm gán rỗng:
+            raise ValueError("Giá trị gán cho data_2025_ct2006 không được rỗng.")
+
+        # 2) Kiểm tra TRẠNG THÁI LƯU TRỮ (_data_2025_ct2006)
+        # - None: chưa gán lần nào → cho gán
+        # - DataFrame không rỗng: đã có dữ liệu → chặn
+        # - DataFrame rỗng: nếu bạn coi là “đã có” thì chặn; nếu coi là “chưa có”, thì cho gán
+        if self._data_2025_ct2006 is None:
+            self._data_2025_ct2006 = value.copy()
+        elif isinstance(self._data_2025_ct2006, pd.DataFrame) and self._data_2025_ct2006.empty:
+            # Nếu bạn muốn “rỗng xem như chưa có”, cho gán:
+            self._data_2025_ct2006 = value.copy()
+        else:
+            # Đã có dữ liệu → không cho ghi đè
+            raise AttributeError("data_2025_ct2006 đã có dữ liệu, không cho phép gán lần nữa.")
+
     
     # ------- Data 2025 CT2018 -------
     @property
@@ -85,12 +127,26 @@ class DataProcessor:
     
     @data_2025_ct2018.setter
     def data_2025_ct2018(self, value: pd.DataFrame) -> None:
+        # 1) Kiểm tra kiểu và đầu vào
         if not isinstance(value, pd.DataFrame):
-            raise TypeError("data_2025_ct2018 phải là một pandas DataFrame.")
+            raise TypeError("data_2025_ct2018 phải là pandas DataFrame.")
         if value.empty:
-            print("[Cảnh báo] data_2025_ct2018 là DataFrame rỗng.")
-        self._data_2025_ct2018 = value
-    
+            # Nếu bạn muốn “luôn set dữ liệu thật”, cấm gán rỗng:
+            raise ValueError("Giá trị gán cho data_2025_ct2018 không được rỗng.")
+
+        # 2) Kiểm tra TRẠNG THÁI LƯU TRỮ (_data_2025_ct2018)
+        # - None: chưa gán lần nào → cho gán
+        # - DataFrame không rỗng: đã có dữ liệu → chặn
+        # - DataFrame rỗng: nếu bạn coi là “đã có” thì chặn; nếu coi là “chưa có”, thì cho gán
+        if self._data_2025_ct2018 is None:
+            self._data_2025_ct2018 = value.copy()
+        elif isinstance(self._data_2025_ct2018, pd.DataFrame) and self._data_2025_ct2018.empty:
+            # Nếu bạn muốn “rỗng xem như chưa có”, cho gán:
+            self._data_2025_ct2018 = value.copy()
+        else:
+            # Đã có dữ liệu → không cho ghi đè
+            raise AttributeError("data_2025_ct2018 đã có dữ liệu, không cho phép gán lần nữa.")
+     
     # -------- Combined Data --------
     @property
     def combined_data(self) -> pd.DataFrame:
@@ -102,7 +158,8 @@ class DataProcessor:
         if not isinstance(value, pd.DataFrame):
             raise TypeError("combined_data phải là một pandas DataFrame.")
         if value.empty:
-            print("[Cảnh báo] combined_data là DataFrame rỗng.")
+            raise ValueError("Giá trị gán cho combined_data không được rỗng.")
+        
         self._combined_data = value
 
     # -------- Khởi tạo và tải dữ liệu --------
@@ -111,15 +168,16 @@ class DataProcessor:
         Args: 
             project_root (Path | str | None): Thư mục gốc của project. Nếu None, sử dụng thư mục hiện tại.
         """
-        self.loader = DataLoader(project_root)
-        # Khởi tạo DataFrames rỗng
-        self.data_2023        = pd.DataFrame()
-        self.data_2024        = pd.DataFrame()
-        self.data_2025_ct2006 = pd.DataFrame()
-        self.data_2025_ct2018 = pd.DataFrame()
-        self._combined_data   = pd.DataFrame()
+        # Khởi tạo các thuộc tính bên trong
+        self._loader = None
+        self._data_2023 = None
+        self._data_2024 = None
+        self._data_2025_ct2006 = None
+        self._data_2025_ct2018 = None
+        self._combined_data = pd.DataFrame()
         
-        # Tải tất cả dữ liệu ban đầu
+        # Khởi tạo DataLoader bên trong
+        self.loader = DataLoader(project_root)
         self.load_all_data()
 
     def load_all_data(self) -> None:
@@ -145,10 +203,14 @@ class DataProcessor:
     # Chuẩn hóa tên cột và cấu trúc các cột dữ liệu 
     def _normalize_columns(self) -> None:
         """ Chuẩn hóa tên cột(ví dụ: đổi tên cột để nhất quán giữa các năm). Thêm hoặc bớt cột nếu cần thiết."""
+        
+        # Trước khi rename
+        self.data_2025_ct2006.drop(columns=["STT"], errors="ignore", inplace=True)
+        self.data_2025_ct2018.drop(columns=["STT"], errors="ignore", inplace=True)
+        
         # Xây dựng map chuẩn hóa tên môn học 
         # Map cho năm 2025 CT2006
         col_map_2025_ct2006 = {
-            "STT": None,  # có thể bỏ nếu không dùng, hoặc giữ nguyên
             "SOBAODANH": "sbd",
             "Toán": "toan",
             "Văn": "ngu_van",
@@ -209,7 +271,6 @@ class DataProcessor:
     # ------- Xây dựng hàm để thực hiện toàn bộ quy trình xử lý --------
     def process_all(self) -> None:
         """Thực hiện toàn bộ quy trình xử lý dữ liệu."""
-        self.loader.load_data()
         self._preprocess_data()
         self._normalize_columns()
         self._build_combined_data()
@@ -217,5 +278,4 @@ class DataProcessor:
     # ------- Hàm lấy dữ liệu đã được xử lý --------
     def get_processed_data(self) -> pd.DataFrame:
         """Trả về kết quả đã xử lý."""
-        self.process_all()
         return self._combined_data
