@@ -20,6 +20,10 @@ def main():
     
     
     print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
 
 if __name__ == "__main__":
     main()
