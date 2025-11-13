@@ -17,7 +17,6 @@ def main():
     
     end = time.perf_counter()
     print(f"Elapsed: {end - start:.6f} s")
-    print("hello")
 
 if __name__ == "__main__":
     main()
