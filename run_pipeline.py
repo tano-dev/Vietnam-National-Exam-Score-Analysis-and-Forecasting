@@ -19,6 +19,13 @@ def main():
     print(f"Elapsed: {end - start:.6f} s")
     print("Done.")
     print("hi")
+    
+    
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
 
 if __name__ == "__main__":
     main()

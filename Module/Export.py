@@ -4,7 +4,6 @@ from PythonProject.Module import Analysis
 import pandas as pd
 import numpy as np
 
-
 class Export:
     # =================== INTERNAL PRIVATE METHODS: XUẤT DỮ LIỆU ===================
     # ----------------------- Khai báo và thiết lập thuộc tính -------------------------
