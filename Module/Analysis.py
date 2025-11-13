@@ -52,7 +52,25 @@ class Analysis:
     # Requirements: Trả về DataFrame thống kê điểm theo môn học
     # def _aggregate_by_exam_subsections(self, block: str) -> pd.DataFrame:
     # Your Code start here
-    
+    def _aggregate_by_exam_subsections(self, block: str) -> pd.DataFrame:
+        df = self.processor.get_processed_data()
+        # Chỉ lấy các cột môn học số
+        score_columns = df.select_dtypes(include='number').columns.difference(['sbd', 'nam_hoc'])
+
+        # Thống kê cơ bản bằng describe
+        stats_df = df[score_columns].describe().transpose()
+        stats_df.rename(columns={'50%': 'median'}, inplace=True)
+
+        # Thêm mode do df.describle() không có
+        stats_df['mode'] = [df[col].mode()[0] if not df[col].mode().empty else None for col in score_columns]
+
+        # Chọn các cột cần thiết
+        stats_df = stats_df[['mean', 'median', 'mode', 'std', 'min', 'max']]
+
+        # Đưa index thành cột 'mon_hoc'
+        stats_df = stats_df.reset_index().rename(columns={'index': 'mon_hoc'})
+
+        return stats_df
     
     
     
