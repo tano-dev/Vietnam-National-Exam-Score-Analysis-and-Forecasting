@@ -12,6 +12,11 @@ class DataProcessor:
         data_2024        (pd.DataFrame): Dữ liệu năm 2024 theo CT2006.
         data_2025_ct2006 (pd.DataFrame): Dữ liệu năm 2025 theo CT2006.
         data_2025_ct2018 (pd.DataFrame): Dữ liệu năm 2025 theo CT2018.
+        combined_data    (pd.DataFrame): Dữ liệu tổng hợp từ các năm.
+        
+    Read-only properties (tự tính từ data_xxx):
+        loader (DataLoader): Instance của DataLoader để load dữ liệu.
+        combined_data (pd.DataFrame): Dữ liệu tổng hợp từ các năm.
     """
     
     # Slots: Cố định các thuộc tính có thể sử dụng, để tiết kiệm bộ nhớ. Không thể thêm thuộc tính mới ngoài danh sách này.
