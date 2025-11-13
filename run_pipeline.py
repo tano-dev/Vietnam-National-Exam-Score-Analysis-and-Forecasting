@@ -4,9 +4,6 @@ import time
 
 def main():
     start = time.perf_counter()
-    # Khởi tạo loader (truyền project_root nếu cần)
-    loader = DataLoader()
-    
     # Khởi tạo processor và gán loader (setter sẽ ok)
     proc = DataProcessor()
 
@@ -15,6 +12,7 @@ def main():
     df = proc.get_processed_data()
 
     print("Rows:", len(df))
+    
     print(df.head())
     
     end = time.perf_counter()

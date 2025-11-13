@@ -228,7 +228,6 @@ class DataProcessor:
         
         # Map cho năm 2025 CT2018
         col_map_2025_ct2018 = {
-            "STT": None,  # hoặc bỏ cột này nếu không dùng
             "SOBAODANH": "sbd",
             "Toán": "toan",
             "Văn": "ngu_van",
@@ -257,8 +256,8 @@ class DataProcessor:
         for df, year in [(self.data_2023, 2023), (self.data_2024, 2024), 
                          (self.data_2025_ct2006, 2025), (self.data_2025_ct2018, 2025)]:
             df['nam_hoc'] = year
-    
-    # ------- Xây dựng Data Tổng kết hợp dữ liệu từ các năm --------
+        
+    # Xây dựng Data Tổng kết hợp dữ liệu từ các năm 
     def _build_combined_data(self) -> pd.DataFrame:
         """ Kết hợp dữ liệu từ các năm thành một DataFrame duy nhất."""
         self._combined_data = pd.concat(
@@ -267,6 +266,61 @@ class DataProcessor:
         )
         return self._combined_data
     
+    # Xây dựng hàm kiểm tra tính hợp lệ và ép kiểu dữ liệu đã xử lý
+    def _validate_data(self) -> None:
+        """Kiểm tra tính hợp lệ của self.combined_data và ép kiểu float.
+        - Cho phép một số cột tùy chọn có thể toàn NaN (ví dụ môn không có ở CT2006).
+        - Chỉ báo lỗi nếu các giá trị KHÔNG NaN nằm ngoài [0, 10].
+        - Báo cáo số lượng giá trị bị ép (coerce) thành NaN khi to_numeric.
+        """
+        if not isinstance(self.combined_data, pd.DataFrame):
+            raise TypeError("combined_data phải là DataFrame trước khi validate.")
+
+        df = self.combined_data  # alias cho gọn
+
+        required_cols = [
+            'toan', 'ngu_van', 'vat_li', 'hoa_hoc', 'sinh_hoc',
+            'lich_su', 'dia_li', 'gdcd', 'ngoai_ngu'
+        ]
+        optional_cols = ['cn_cong_nghiep', 'cn_nong_nghiep', 'tin_hoc']
+
+        for col in required_cols + optional_cols:
+            if col not in df.columns:
+                # với dữ liệu của bạn hầu như đã tạo đủ cột; nếu thiếu thì raise rõ ràng
+                raise ValueError(f"Thiếu cột bắt buộc: {col}")
+
+            # Ép số; đếm số lượng bị coerce để giám sát chất lượng dữ liệu
+            before_na = df[col].isna().sum()
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            after_na = df[col].isna().sum()
+            coerced = max(0, after_na - before_na)
+
+            # Chỉ xét các giá trị KHÔNG NaN
+            notna_mask = df[col].notna()
+            if notna_mask.any():
+                out_range_mask = ~df.loc[notna_mask, col].between(0, 10)
+                if out_range_mask.any():
+                    bad_idx = df.loc[notna_mask].index[out_range_mask].tolist()[:10]  # show tối đa 10
+                    raise ValueError(
+                        f"Cột '{col}' có {out_range_mask.sum()} giá trị ngoài [0,10]. "
+                        f"Ví dụ index: {bad_idx}"
+                    )
+            else:
+                # Cả cột toàn NaN
+                if col in required_cols:
+                    raise ValueError(f"Cột bắt buộc '{col}' toàn NaN sau khi chuẩn hoá/ép kiểu.")
+                # optional: cho phép toàn NaN, bỏ qua
+
+            # Ép kiểu float rõ ràng
+            df[col] = df[col].astype(float)
+
+            # (Tùy chọn) log cảnh báo khi có giá trị bị coerce
+            if coerced > 0 and hasattr(self, 'logger'):
+                self.logger.warning(f"Cột '{col}': {coerced} giá trị không phải số đã bị coerce thành NaN.")
+
+        # Lưu lại (không cần gán lại nếu df là alias, nhưng làm rõ ý đồ)
+        self.combined_data = df        
+    
     # ===================== PUBLIC API: Hàm thực hiện toàn bộ quy trình xử lý =====================
     # ------- Xây dựng hàm để thực hiện toàn bộ quy trình xử lý --------
     def process_all(self) -> None:
@@ -274,6 +328,7 @@ class DataProcessor:
         self._preprocess_data()
         self._normalize_columns()
         self._build_combined_data()
+        self._validate_data()
     
     # ------- Hàm lấy dữ liệu đã được xử lý --------
     def get_processed_data(self) -> pd.DataFrame:
