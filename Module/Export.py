@@ -50,5 +50,24 @@ class Export:
         distribution.to_csv(file_path, header=['Score Distribution'])
         
     # ==================== PUBLIC API METHODS: XUẤT DỮ LIỆU ====================
-    # Xuất dữ liệu phân tích điểm theo khối thi ra file CSV
-    
+    # Xuất dữ liệu điểm theo khối thi ra file CSV
+    def export_score_by_block(self, block: str, file_path: str) -> None:
+        """Xuất dữ liệu điểm theo khối thi ra file CSV."""
+        analysis = Analysis(self.Export)
+        stats = analysis._get_statistics_by_block(block)
+        stats.to_csv(file_path)
+        
+    # Xuất dữ liệu điểm theo môn học ra file CSV
+    def export_score_by_subject(self, subject: str, file_path: str) -> None:
+        """Xuất dữ liệu điểm theo môn học ra file CSV."""
+        analysis = Analysis(self.Export)
+        distribution = analysis._get_statistics_by_subject(subject)
+        distribution.to_csv(file_path, header=['Score Distribution'])
+    # Xuất dữ liệu điểm theo tỉnh thành ra file CSV
+    def export_score_by_city(self, city: str, file_path: str) -> None:
+        """Xuất dữ liệu điểm theo tỉnh thành ra file CSV."""
+        analysis = Analysis(self.Export)
+        comparison = analysis._get_statistics_by_region(city)
+        comparison.to_csv(file_path)
+        
+    # X
