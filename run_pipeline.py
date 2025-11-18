@@ -13,6 +13,15 @@ def main():
     
     end = time.perf_counter()
     print(f"Elapsed: {end - start:.6f} s")
+    print("Done.")
+    print("hi")
+    
+    
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
+    print("Duy skibidi")
 
 
 
