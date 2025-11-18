@@ -206,10 +206,10 @@ class DataProcessor:
         self.data_2025_ct2018.dropna(how='all', inplace=True)
         
         # Loại bỏ các hàng trùng lặp dựa trên cột 'SOBAODANH'
-        self.data_2023.drop_duplicates(subset=['SOBAODANH'], keep='first', inplace=True)
-        self.data_2024.drop_duplicates(subset=['SOBAODANH'], keep='first', inplace=True)
-        self.data_2025_ct2006.drop_duplicates(subset=['SOBAODANH'], keep='first', inplace=True)
-        self.data_2025_ct2018.drop_duplicates(subset=['SOBAODANH'], keep='first', inplace=True)
+        self.data_2023.drop_duplicates(subset=['sbd'], keep='first', inplace=True)
+        self.data_2024.drop_duplicates(subset=['sbd'], keep='first', inplace=True)
+        self.data_2025_ct2006.drop_duplicates(subset=['sbd'], keep='first', inplace=True)
+        self.data_2025_ct2018.drop_duplicates(subset=['sbd'], keep='first', inplace=True)
     
     # Chuẩn hóa tên cột và cấu trúc các cột dữ liệu 
     def _normalize_columns(self) -> None:
@@ -336,8 +336,8 @@ class DataProcessor:
     # ------- Xây dựng hàm để thực hiện toàn bộ quy trình xử lý --------
     def process_all(self) -> None:
         """Thực hiện toàn bộ quy trình xử lý dữ liệu."""
-        self._preprocess_data()
         self._normalize_columns()
+        self._preprocess_data()
         self._build_combined_data()
         self._validate_data()
     
