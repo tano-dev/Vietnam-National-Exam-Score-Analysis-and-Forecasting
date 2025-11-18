@@ -274,7 +274,7 @@ class Analysis:
         return counts
     
 
-    # Your Code end here
+# Your Code end here
     
     
     # ===== CÁC HÀM THỐNG KÊ DỮ LIỆU    
@@ -382,8 +382,6 @@ class Analysis:
         Trả về dict thống kê điểm cho một tỉnh.
         Kết quả: {nam_hoc: {mean, median, mode, std, min, max}}
         """
-        import pandas as pd
-
         # Lấy DataFrame phân phối tổng điểm theo tỉnh
         df = self._compare_by_region(region)
 
