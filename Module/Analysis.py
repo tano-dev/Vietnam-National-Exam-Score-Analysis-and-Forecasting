@@ -51,7 +51,7 @@ class Analysis:
 
     @property
     def block(self) -> str:
-        return self.block
+        return self._block
     
     @block.setter
     def block(self, value: str) -> None:
@@ -423,7 +423,6 @@ class Analysis:
         Trả về dict thống kê điểm cho một tỉnh.
         Kết quả: {nam_hoc: {mean, median, mode, std, min, max}}
         """
-        import pandas as pd
 
         # Lấy DataFrame phân phối tổng điểm theo tỉnh
         df = self._compare_by_region(region)
