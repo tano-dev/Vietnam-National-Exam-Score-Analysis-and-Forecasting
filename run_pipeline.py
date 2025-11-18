@@ -1,5 +1,6 @@
 from Module.Load_Data import DataLoader
 from Module.Processor_Data import DataProcessor
+from Module.Analysis import Analysis
 import time
 
 def main():
@@ -14,6 +15,10 @@ def main():
     print("Rows:", len(df))
     
     print(df.head())
+    
+    # Phân tích dữ liệu
+    analysis = Analysis(df)
+    analysis.perform_analysis()
     
     end = time.perf_counter()
     print(f"Elapsed: {end - start:.6f} s")

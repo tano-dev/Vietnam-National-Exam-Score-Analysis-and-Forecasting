@@ -17,11 +17,16 @@ class Analysis:
     
     Attributes (public API):
         processor (Processor_Data): Đối tượng DataProcessor để lấy dữ liệu đã xử lý.
-    
+        subject    (str)          : Môn học cần phân tích (tự chọn)
+        block      (str)          : Khối thi cần phân tích (tự chọn)
+        region     (str)          : Tỉnh thành cần phân tích (tự chọn)  
     """
     # Slots: Cố định các thuộc tính có thể sử dụng
     __slots__ = (
         "_processor",          # Đối tượng DataProcessor để lấy dữ liệu đã xử lý
+        "_subject",            # Môn học cần phân tích (tự chọn)
+        "_block",              # Khối thi cần phân tích (tự chọn)
+        "_region",             # Tỉnh thành cần phân tích (tự chọn)
     )
     
     # ------------------------ Setter và Getter -------------------------
@@ -34,10 +39,46 @@ class Analysis:
     def processor(self, value: Processor_Data) -> None:
         self._processor = value
     
+    @property
+    def subject(self) -> str:
+        return self._subject
+    
+    @subject.setter
+    def subject(self, value: str) -> None:
+        if not isinstance(value, str) or not value:
+            raise TypeError("Môn thi phải là chuỗi không rỗng")
+        self._subject = value
+
+    @property
+    def block(self) -> str:
+        return self._block
+    
+    @block.setter
+    def block(self, value: str) -> None:
+        if not isinstance(value, str) or not value:
+            raise TypeError("Khối thi phải là chuỗi không rỗng")
+        allowed = {"A", "B", "C", "D", "Điểm gãy", "All", None}
+        if value not in allowed:
+            raise ValueError(f"Khối thi {value} không hợp lệ.")
+        self._block = value
+
+    @property
+    def region(self) ->str:
+        return self._region
+    
+    @region.setter
+    def region(self, value: str) -> None:
+        if not isinstance(value, str) or not value:
+            raise TypeError("Tỉnh thành phải là chuỗi không rỗng")
+        self._region = value
+       
     # -------- Khởi tạo và thiết lập thuộc tính --------
     def __init__(self, processor: Processor_Data):
         self.processor = processor
-    
+        self._subject = None
+        self._block = None
+        self._region = None
+        
     # ----------------------------- Internal Methods -----------------------------
     # Phân tích phân phối điểm của một môn học cụ thể
     def _analyze_score_distribution(self, subject: str) -> pd.Series:
