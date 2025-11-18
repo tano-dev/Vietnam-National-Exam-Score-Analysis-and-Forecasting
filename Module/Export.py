@@ -53,6 +53,7 @@ class Export:
     # Xuất dữ liệu điểm theo khối thi ra file CSV
     def export_score_by_block(self, block: str, file_path: str) -> None:
         """Xuất dữ liệu điểm theo khối thi ra file CSV."""
+        # Analysis object is now created once in __init__ and reused
         analysis = Analysis(self.Export)
         stats = analysis.get_statistics_by_block(block)
         stats.to_csv(file_path)
@@ -80,7 +81,7 @@ class Export:
     def export_subject_analysis(self, subject: str, file_path: str) -> None:
         """Xuất dữ liệu phân tích điểm theo môn học ra file CSV."""
         analysis = Analysis(self.Export)
-        stats = analysis.get_arregate_by_exam_subsections(subject)
+        stats = analysis.get_aggregate_by_exam_subsections(subject)
         stats.to_csv(file_path)
         
     # Xuất dữ liệu phân tích điểm theo khối thi.
