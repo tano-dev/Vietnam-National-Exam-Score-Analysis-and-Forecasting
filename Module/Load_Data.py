@@ -1,6 +1,5 @@
 # Khai báo thư viện
 from __future__ import annotations
-from Module.Processor_Data import DataProcessor
 from importlib.resources import path
 from pathlib import Path
 import pandas as pd

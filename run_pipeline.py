@@ -17,9 +17,11 @@ def main():
     print(df.head())
     
     # Phân tích dữ liệu
-    analysis = Analysis(df)
-    analysis.perform_analysis()
+    analysis = Analysis(proc)
     
+    # In ra kết quả thống kê
+    print(analysis.get_arregate_by_exam_subsections(subject="toan"))
+        
     end = time.perf_counter()
     print(f"Elapsed: {end - start:.6f} s")
 

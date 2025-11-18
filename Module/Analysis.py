@@ -1,4 +1,4 @@
-from Module.Processor_Data import Processor_Data
+from Module.Processor_Data import DataProcessor
 import pandas as pd
 import numpy as np
 
@@ -16,7 +16,7 @@ class Analysis:
     - So sánh điểm theo tỉnh thành.
     
     Attributes (public API):
-        processor (Processor_Data): Đối tượng DataProcessor để lấy dữ liệu đã xử lý.
+        processor (DataProcessor): Đối tượng DataProcessor để lấy dữ liệu đã xử lý.
         subject    (str)          : Môn học cần phân tích (tự chọn)
         block      (str)          : Khối thi cần phân tích (tự chọn)
         region     (str)          : Tỉnh thành cần phân tích (tự chọn)  
@@ -31,12 +31,12 @@ class Analysis:
     
     # ------------------------ Setter và Getter -------------------------
     @property
-    def processor(self) -> Processor_Data:
+    def processor(self) -> DataProcessor:
         """Đối tượng DataProcessor để lấy dữ liệu đã xử lý."""
         return self._processor
     
     @processor.setter
-    def processor(self, value: Processor_Data) -> None:
+    def processor(self, value: DataProcessor) -> None:
         self._processor = value
     
     @property
@@ -73,7 +73,7 @@ class Analysis:
         self._region = value
        
     # -------- Khởi tạo và thiết lập thuộc tính --------
-    def __init__(self, processor: Processor_Data):
+    def __init__(self, processor: DataProcessor):
         self.processor = processor
         self._subject = None
         self._block = None
