@@ -164,11 +164,70 @@ class Analysis:
         df = self.processor.get_processed_data()
 
         block_subjects_map = {
-            'A': ['toan', 'vat_li', 'hoa_hoc'],
-            'B': ['toan', 'hoa_hoc', 'sinh_hoc'],
-            'C': ['ngu_van', 'lich_su', 'dia_li'],
-            'D': ['toan', 'ngu_van', 'ngoai_ngu'],
-            'Điểm gãy': ['tin_hoc', 'cn_cong_nghiep', 'cn_nong_nghiep', 'gdcd']
+            'A00': ['toan', 'vat_li', 'hoa_hoc'],
+            'A01': ['toan', 'vat_li', 'ngoai_ngu'],
+            'A02': ['toan', 'vat_li', 'sinh_hoc'],
+            'A03': ['toan', 'vat_li', 'lich_su'],
+            'A04': ['toan', 'vat_li', 'dia_li'],
+            'A05': ['toan', 'hoa_hoc', 'lich_su'],
+            'A06': ['toan', 'hoa_hoc', 'dia_li'],
+            'A07': ['toan', 'lich_su', 'dia_li'],
+            'A08': ['toan', 'lich_su', 'gdcd'],
+            'A09': ['toan', 'dia_li', 'gdcd'],
+            'A10': ['toan', 'vat_li', 'gdcd'],
+            'A11': ['toan', 'hoa_hoc', 'gdcd'],                                                                                        
+            'B00': ['toan', 'hoa_hoc', 'sinh_hoc'],
+            'B01': ['toan', 'lich_su', 'sinh_hoc'],
+            'B02': ['toan', 'sinh_hoc', 'dia_li'],
+            'B03': ['toan', 'sinh_hoc', 'ngu_van'],
+            'B04': ['toan', 'sinh_hoc', 'gdcd'],
+            'B08': ['toan', 'sinh', 'ngoai_ngu'],          
+            'C00': ['ngu_van', 'lich_su', 'dia_li'],
+            'C01': ['ngu_van', 'toan', 'vat_li'],
+            'C02': ['ngu_van', 'toan', 'hoa_hoc'],
+            'C03': ['ngu_van', 'toan', 'lich_su'],
+            'C04': ['ngu_van', 'toan', 'dia_li'],
+            'C05': ['ngu_van', 'vat_li', 'hoa_hoc'],
+            'C06': ['ngu_van', 'vat_li', 'sinh_hoc'],
+            'C07': ['ngu_van', 'vat_li', 'lich_su'],            
+            'C08': ['ngu_van', 'hoa_hoc', 'sinh_hoc'],
+            'C09': ['ngu_van', 'dia_li', 'vat_li'],
+            'C10': ['ngu_van', 'hoa_hoc', 'lich_su'],
+            'C11': ['ngu_van', 'hoa_hoc', 'dia_li'],            
+            'C12': ['ngu_van', 'lich_su', 'sinh_hoc'],
+            'C13': ['ngu_van', 'dia_li', 'sinh_hoc'],
+            'C14': ['ngu_van', 'toan', 'gdcd'],
+            'C16': ['ngu_van', 'vat_li', 'gdcd'],
+            'C17': ['ngu_van', 'hoa_hoc', 'gdcd'],
+            'C19': ['ngu_van', 'lich_su', 'gdcd'],
+            'C20': ['ngu_van', 'dia_ly', 'gdcd'],                                                                                         
+            'D01': ['toan', 'ngu_van', 'ngoai_ngu'],
+            'D07': ['toan', 'hoa', 'ngoai_ngu'],
+            'D08': ['toan', 'sinh_hoc', 'ngoai_ngu'],
+            'D09': ['toan', 'lich_su', 'ngoai_ngu'],
+            'D10': ['toan', 'dia_li', 'ngoai_ngu'],
+            'D11': ['ngu_van', 'vat_li', 'ngoai_ngu'],
+            'D12': ['ngu_van', 'hoa_hoc', 'ngoai_ngu'],
+            'D13': ['ngu_van', 'sinh_hoc', 'ngoai_ngu'],
+            'D14': ['ngu_van', 'lich_su', 'ngoai_ngu'],
+            'D15': ['ngu_van', 'dia_li', 'ngoai_ngu'],
+            'D66': ['ngu_van', 'gdcd', 'ngoai_ngu'],
+            'D84': ['toan', 'ngoai_ngu', 'gdcd'],                                             
+            'X02': ['toan', 'ngu_van', 'tin_hoc'],
+            'X03': ['toan', 'ngu_van', 'cn_cong_nghiep'],
+            'X04': ['toan', 'ngu_van', 'cn_nong_nghiep'],
+            'X06': ['toan', 'vat_li', 'tin_hoc'],
+            'X07': ['toan', 'vat_li', 'cn_cong_nghiep'],
+            'X08': ['toan', 'vat_li', 'cn_nong_nghiep'],
+            'X10': ['toan', 'hoa_hoc', 'tin_hoc'],
+            'X11': ['toan', 'hoa_hoc', 'cn_cong_nghiep'],
+            'X12': ['toan', 'hoa_hoc', 'cn_nong_nghiep'],
+            'X14': ['toan', 'sinh_hoc', 'tin_hoc'],
+            'X15': ['toan', 'sinh_hoc', 'cn_cong_nghiep'],
+            'X16': ['toan', 'sinh_hoc', 'cn_nong_nghiep'],
+            'X26': ['toan', 'tin_hoc', 'ngoai_ngu'],
+            'X27': ['toan', 'cn_cong_nghiep', 'ngoai_ngu'],
+            'X28': ['toan', 'cn_nong_nghiep', 'ngoai_ngu'], 
         }
 
         blocks_to_run = (
@@ -231,7 +290,74 @@ class Analysis:
             DataFrame với cột ['nam_hoc', 'tinh', 'tong_diem', 'so_hoc_sinh']
         """
         df = self.processor.get_processed_data()
-
+        
+        # Map tỉnh trước chuyển đổi
+        pre_region_map = {
+            "Hà Nội": ["01"],
+            "Thành phố Hồ Chí Minh": ["02"],
+            "Hải Phòng": ["03"],
+            "Đà Nẵng" : ["04"],
+            "Hà Giang": ["05"],
+            "Cao Bằng": ["06"],
+            "Lai Châu": ["07"],
+            "Lào Cai": ["08"],
+            "Tuyên Quang": ["09"],
+            "Lạng Sơn": ["10"],
+            "Bắc Kạn": ["11"],
+            "Thái Nguyên": ["12"],
+            "Yên Bái": ["13"],
+            "Sơn La": ["14"],
+            "Phú Thọ": ["15"],
+            "Vĩnh Phúc": ["16"],
+            "Quảng Ninh": ["17"],
+            "Bắc Giang": ["18"],
+            "Bắc Ninh": ["19"],
+            "Hải Dương": ["21"],
+            "Hưng Yên": ["22"],
+            "Hoà Bình": ["23"],
+            "Hà Nam": ["24"],
+            "Nam Định": ["25"],
+            "Thái Bình": ["26"],
+            "Ninh Bình": ["27"],
+            "Thanh Hoá": ["28"],
+            "Nghệ An": ["29"],
+            "Hà Tĩnh": ["30"],
+            "Quảng Bình": ["31"],
+            "Quảng Trị": ["32"],
+            "Huế": ["33"],
+            "Quảng Nam": ["34"],
+            "Quảng Ngãi": ["35"],
+            "Kon Tum": ["36"],
+            "Bình Định": ["37"],
+            "Gia Lai": ["38"],
+            "Phú Yên": ["39"],
+            "Đắk Lắk": ["40"],
+            "Khánh Hoà": ["41"],
+            "Lâm Đồng": ["42"],
+            "Bình Phước": ["43"],
+            "Bình Dương": ["44"],
+            "Ninh Thuận": ["45"],
+            "Tây Ninh": ["46"],
+            "Bình Thuận": ["47"],
+            "Đồng Nai": ["48"],
+            "Long An": ["49"],
+            "Đồng Tháp": ["50"],
+            "An Giang": ["51"],
+            "Vũng Tàu": ["52"],
+            "Tiền Giang": ["53"],
+            "Kiên Giang": ["54"],
+            "Cần Thơ": ["55"],
+            "Bến Tre": ["56"],
+            "Vĩnh Long": ["57"],
+            "Trà Vinh": ["58"],
+            "Sóc Trăng": ["59"],
+            "Bạc Liêu": ["60"],
+            "Cà Mau": ["61"],
+            "Điện Biên": ["62"],
+            "Đăk Nông": ["63"],
+            "Hậu Giang": ["64"]
+        }
+        
         # Map tỉnh theo nhiều mã sau đợt chuyển đổi
         region_map_raw = {
             "Hà Nội": ["01"],
@@ -278,7 +404,7 @@ class Analysis:
         if 'sbd' not in df.columns:
             raise ValueError("Thiếu cột 'sbd'.")
         df['sbd'] = df['sbd'].astype(str).str.zfill(8)
-        df['ma_tinh'] = df['sbd'].str[:2]
+        df['ma_tinh'] = df['sbd'].str[:2]       
         df['tinh'] = df['ma_tinh'].map(code_to_region)
         df = df.dropna(subset=['tinh'])
 
@@ -330,7 +456,7 @@ class Analysis:
         """
 
         # Lấy DataFrame phân phối điểm
-        df = self._aggregate_by_exam_subsections(subject)
+        df = self.processor.get_processed_data()
 
         # Lọc chỉ môn cần phân tích
         if subject != "All":
@@ -379,7 +505,7 @@ class Analysis:
         """
 
         # Lấy DataFrame phân phối tổng điểm theo khối
-        df = self._analyze_scores_by_exam_block(block)
+        df = self.analyze_scores_by_exam_block(block)
 
         stats_dict = {}
 
@@ -424,7 +550,7 @@ class Analysis:
         Kết quả: {nam_hoc: {mean, median, mode, std, min, max}}
         """
         # Lấy DataFrame phân phối tổng điểm theo tỉnh
-        df = self._compare_by_region(region)
+        df = self.compare_by_region(region)
 
         stats_dict = {}
 
