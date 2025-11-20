@@ -11,6 +11,12 @@ def main():
     start = time.perf_counter()
     # Khởi tạo processor và gán loader (setter sẽ ok)
     
+    # Phân tích dữ liệu
+    analysis = Analysis(proc)
+    
+    # In ra kết quả thống kê
+    print(analysis.get_aggregate_by_exam_subsections(subject="toan"))
+        
     end = time.perf_counter()
     print(f"Elapsed: {end - start:.6f} s")
     print("Done.")
