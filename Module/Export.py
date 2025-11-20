@@ -24,56 +24,106 @@ class Export:
     
     # Slots: Cố định các thuộc tính có thể sử dụng
     __slots__ = (
-        "_Export",          # Đối tượng Export để lấy dữ liệu đã phân tích
+        "_Export",          # Đối tượng Export (DataProcessor) để lấy dữ liệu đã phân tích
     )
     
     # ------------------------ Setter và Getter -------------------------
     # Export Getter và Setter
     @property
-    def Export(self) -> Export:
-        """Đối tượng Export để lấy dữ liệu đã phân tích."""
+    def Export(self) -> DataProcessor:
+        """Đối tượng Export để lấy dữ liệu đã phân tích (instance của DataProcessor)."""
         return self._Export
     
     @Export.setter
-    def Export(self, value: Export) -> None:
+    def Export(self, value: DataProcessor) -> None:
+        if not isinstance(value, DataProcessor):
+            raise TypeError("Export phải là một instance của DataProcessor.")
         self._Export = value
         
     # -------- Khởi tạo và thiết lập thuộc tính --------
-    def __init__(self, Export: Export):
+    def __init__(self, Export: DataProcessor):
+        """Khởi tạo lớp Export với một đối tượng DataProcessor đã xử lý dữ liệu."""
         self.Export = Export
     
     # ----------------------------- Internal Methods -----------------------------
+    # Ở dưới, mình xây dựng các hàm nội bộ (_build_*) để chuẩn bị DataFrame,
+    # các hàm public chỉ việc gọi và ghi ra file.
+    
+    def _build_score_by_block(self, block: str) -> pd.DataFrame:
+        """
+        Xây dựng DataFrame thống kê điểm theo khối thi từ Analysis.
+        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
+        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
+        """
+        analysis = Analysis(self.Export)
+        stats_dict = analysis.get_statistics_by_block(block)  # dict
+        
+        if not stats_dict:
+            return pd.DataFrame()
+        
+        df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
+        return df
+    
+    def _build_score_by_subject(self, subject: str) -> pd.DataFrame:
+        """
+        Xây dựng DataFrame thống kê điểm theo môn học từ Analysis.
+        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
+        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
+        """
+        analysis = Analysis(self.Export)
+        stats_dict = analysis.get_statistics_by_subject(subject)
+        
+        if not stats_dict:
+            return pd.DataFrame()
+        
+        df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
+        return df
+    
+    def _build_score_by_city(self, city: str) -> pd.DataFrame:
+        """
+        Xây dựng DataFrame thống kê điểm theo tỉnh/thành từ Analysis.
+        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
+        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
+        """
+        analysis = Analysis(self.Export)
+        stats_dict = analysis.get_statistics_by_region(city)
+        
+        if not stats_dict:
+            return pd.DataFrame()
+        
+        df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
+        return df
+    
+    # ----------------------------- Internal Methods -----------------------------
     # Xuất dữ liệu phân tích điểm của một môn học cụ thể
-    def _export_score_analysis(self, subject: str, file_path: str) -> pd.DataFrame:
+    def _export_score_analysis(self, subject: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu phân tích điểm của một môn học cụ thể."""
         analysis = Analysis(self.Export)
         distribution = analysis.get_score_distribution(subject)
-        filename = f"Export_Analysis_{subject}.csv"
-        distribution.to_csv(filename, index=False)
+        distribution.to_csv(filepath, index=False)
 
     # Xuất dữ liệu phân tích điểm theo môn học.
-    def _export_subject_analysis(self, subject: str) -> pd.DataFrame:
+    def _export_subject_analysis(self, subject: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu phân tích điểm theo môn học."""
         analysis = Analysis(self.Export)
         stats = analysis.get_arregate_by_exam_subsections(subject)
-        filename = f"Export_Analysis_Subject_{subject}.csv"
-        stats.to_csv(filename, index=False)
+        stats.to_csv(filepath, index=False)
     
     # Xuất dữ liệu phân tích điểm theo khối thi.
-    def _export_block_analysis(self, block: str) -> pd.DataFrame:
+    def _export_block_analysis(self, block: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu phân tích điểm theo khối thi."""
         analysis = Analysis(self.Export)
         stats = analysis.analyze_scores_by_exam_block(block)
-        filename = f"Export_Analysis_Block_{block}.csv"
-        stats.to_csv(filename, index=False)
+        stats.to_csv(filepath, index=False)
     
     # Xuất dữ liệu phân tích điểm theo tỉnh thành.
-    def _export_city_analysis(self, city: str) -> pd.DataFrame:
+    def _export_city_analysis(self, city: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu phân tích điểm theo tỉnh thành."""
         analysis = Analysis(self.Export)
         stats = analysis.compare_by_region(city)
-        filename = f"Export_Analysis_City_{city}.csv"
-        stats.to_csv(filename, index=False)
+        stats.to_csv(filepath, index=False)
+        
+        
     
     # Xuất dữ liệu điểm theo khối thi
     def _export_score_by_block(self, block: str) -> pd.DataFrame:
@@ -84,20 +134,18 @@ class Export:
         stats.to_csv(filename, index=False)
     
     # Xuất dữ liệu điểm theo môn học
-    def _export_score_by_subject(self, subject: str) -> pd.DataFrame:
+    def _export_score_by_subject(self, subject: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu điểm theo môn học."""
         analysis = Analysis(self.Export)
         distribution = analysis.get_statistics_by_subject(subject)
-        filename = f"Export_Score_Subject_{subject}.csv"
-        distribution.to_csv(filename, index=False)
+        distribution.to_csv(filepath, index=False)
     
     # Xuất dữ liệu điểm theo tỉnh thành
-    def _export_score_by_city(self, city: str) -> pd.DataFrame:
+    def _export_score_by_city(self, city: str, filepath: str) -> pd.DataFrame:
         """Xuất dữ liệu điểm theo tỉnh thành."""
         analysis = Analysis(self.Export)
         comparison = analysis.get_statistics_by_region(city)
-        filename = f"Export_Score_City_{city}.csv"
-        comparison.to_csv(filename, index=False)
+        comparison.to_csv(filepath, index=False)
     
     # ==================== PUBLIC API METHODS: XUẤT DỮ LIỆU ====================
     # Xuất dữ liệu điểm theo khối thi ra file CSV
@@ -177,4 +225,3 @@ class Export:
     def export_city_analysis(self, city: str) -> pd.DataFrame:
         """Xuất dữ liệu phân tích điểm theo tỉnh thành ra DataFrame."""
         return self._export_city_analysis(city)
-    
