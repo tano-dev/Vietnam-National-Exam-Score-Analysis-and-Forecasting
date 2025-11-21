@@ -1,96 +1,220 @@
+from pathlib import Path
+import unicodedata
+import pandas as pd
+import numpy as np
+import os
+
 from Module.Processor_Data import DataProcessor
 from Module.Analysis import Analysis
 
-import pandas as pd
-import numpy as np
 
 class Export:
-    # =================== INTERNAL PRIVATE METHODS: XUẤT DỮ LIỆU ===================
-    # ----------------------- Khai báo và thiết lập thuộc tính -------------------------
-    """"Lớp để xuất dữ liệu đã được phân tích. Thiết lập nhóm thuộc tính qua setter với những yêu cầu cụ thể:
-    - Theo môn học, xuất dữ liệu phân tích từ Processor_Data & Analysis.
-    - Theo khối thi, xuất dữ liệu phân tích từ Processor_Data & Analysis.
-    - Theo tỉnh thành, xuất dữ liệu phân tích từ Processor_Data & Analysis.
-    
-    Trả về các Data Frame theo:
-    - Xuất phân phối điểm theo môn học.
-    - Xuất thống kê điểm theo khối thi.
-    - Xuất so sánh điểm theo tỉnh thành.
-    - Các thông số thống kê khác.
-    
-    Tất cả lưu trong Data: Clean_Data_2023-2025 floder
-    Tên file: Export_Analysis_<subject/block/city>_YYYY.csv
+    """Export dữ liệu đã phân tích cuối pipeline sang CSV theo cấu trúc chuẩn.
+
+    Mô tả:
+        - Bước cuối của pipeline: Draw → Load → Processor → Analysis → Export → Clean Data
+        - Tự động export toàn bộ dữ liệu thống kê theo Môn học, Khối thi & Tỉnh thành.
+        - Không cần truyền tham số bên ngoài, toàn bộ domain được suy ra từ DataFrame.
+        - Kết quả đầu ra là “Clean Data” dùng cho trực quan hoá (EDA), báo cáo, mô hình.
+
+    Attributes (public API):
+        processor (DataProcessor): Nguồn dữ liệu đã xử lý (data sạch).
+        analysis  (Analysis): Module phân tích được đồng bộ với processor.
+        root_path (str): Thư mục gốc lưu toàn bộ file CSV đã export.
     """
-    
-    # Slots: Cố định các thuộc tính có thể sử dụng
+
+    # ==================== INTERNAL PRIVATE MEMBERS ====================
     __slots__ = (
-        "_Export",          # Đối tượng Export (DataProcessor) để lấy dữ liệu đã phân tích
+        "_processor",      # Instance DataProcessor
+        "_analysis",       # Instance Analysis (auto-sync theo processor)
+        "_root_path",      # Đường dẫn thư mục gốc xuất dữ liệu
     )
-    
-    # ------------------------ Setter và Getter -------------------------
-    # Export Getter và Setter
+
+    # -------------------- CONSTRUCTOR --------------------
+    def __init__(self,
+                 processor: DataProcessor,
+                 root_path: str = "Clean_Data_2023-2025") -> None:
+        """Khởi tạo Export, liên kết Analysis & tạo thư mục gốc nếu cần.
+
+        Args:
+            processor (DataProcessor): Đối tượng xử lý dữ liệu đầu vào.
+            root_path (str): Thư mục gốc lưu clean data sau export.
+        """
+        # Gọi setter để đảm bảo validate & sync nội bộ
+        self.processor = processor
+        self.root_path = root_path
+
+    # -------------------- GETTER / SETTER --------------------
     @property
-    def Export(self) -> DataProcessor:
-        """Đối tượng Export để lấy dữ liệu đã phân tích (instance của DataProcessor)."""
-        return self._Export
-    
-    @Export.setter
-    def Export(self, value: DataProcessor) -> None:
+    def processor(self) -> DataProcessor:
+        """Đối tượng DataProcessor hiện tại (source của dữ liệu sạch)."""
+        return self._processor
+
+    @processor.setter
+    def processor(self, value: DataProcessor) -> None:
         if not isinstance(value, DataProcessor):
-            raise TypeError("Export phải là một instance của DataProcessor.")
-        self._Export = value
-        
-    # -------- Khởi tạo và thiết lập thuộc tính --------
-    def __init__(self, Export: DataProcessor):
-        """Khởi tạo lớp Export với một đối tượng DataProcessor đã xử lý dữ liệu."""
-        self.Export = Export
-    
-    # ----------------------------- Internal Methods -----------------------------
-    # Ở dưới, mình xây dựng các hàm nội bộ (_build_*) để chuẩn bị DataFrame,
-    # các hàm public chỉ việc gọi và ghi ra file.
-    
-    def _build_score_by_block(self, block: str) -> pd.DataFrame:
+            raise TypeError("processor phải là instance của DataProcessor.")
+        self._processor = value
+        # Mỗi lần thay processor, tạo mới Analysis tương ứng
+        self._analysis = Analysis(value)
+
+    @property
+    def analysis(self) -> Analysis:
+        """Đối tượng Analysis dùng nội bộ cho các phép phân tích."""
+        return self._analysis
+
+    @property
+    def root_path(self) -> str:
+        """Thư mục gốc để lưu toàn bộ Clean Data sau export."""
+        return self._root_path
+
+    @root_path.setter
+    def root_path(self, value: str) -> None:
+        if not isinstance(value, str):
+            raise TypeError("root_path phải là string.")
+        self._root_path = value
+        # Tự tạo thư mục gốc nếu chưa tồn tại
+        Path(self._root_path).mkdir(parents=True, exist_ok=True)
+
+    # ==================== INTERNAL PRIVATE METHODS ====================
+    # ---------- Helpers: Detect domain từ dataframe ----------
+    def _detect_subjects(self) -> list[str]:
+        """Tự động lấy danh sách môn học từ dữ liệu sạch.
+
+        Logic:
+            - Chọn các cột dạng số (điểm thi).
+            - Loại bỏ các cột không phải điểm: 'sbd', 'nam_hoc'.
         """
-        Xây dựng DataFrame thống kê điểm theo khối thi từ Analysis.
-        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
-        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
+        df = self.processor.get_processed_data()
+        return (
+            df.select_dtypes(include="number")
+              .columns.difference(["sbd", "nam_hoc"])
+              .tolist()
+        )
+
+    def _detect_years(self) -> list[int]:
+        """Lấy danh sách năm học trong dữ liệu (dùng cho phân tích, không gắn vào tên file)."""
+        df = self.processor.get_processed_data()
+        return sorted(df["nam_hoc"].unique().tolist())
+
+    def _detect_provinces(self) -> list[str]:
+        """Lấy danh sách tỉnh/thành thực tế có trong dữ liệu.
+
+        Gọi qua Analysis.compare_by_region("ALL") để lấy phân phối,
+        sau đó trích cột 'tinh'.
         """
-        analysis = Analysis(self.Export)
-        stats_dict = analysis.get_statistics_by_block(block)  # dict
-        
-        if not stats_dict:
-            return pd.DataFrame()
-        
+        df = self.analysis.compare_by_region("ALL")
+        return sorted(df["tinh"].unique().tolist())
+
+    def _detect_blocks(self) -> list[str]:
+        """Lấy danh sách khối thi có mặt trong dữ liệu.
+
+        Thay vì truy cập map nội bộ, ta:
+            - Gọi Analysis.analyze_scores_by_exam_block("All")
+            - Lấy unique các giá trị cột 'khoi'.
+        """
+        df = self.analysis.analyze_scores_by_exam_block("All")
+        if df.empty:
+            return []
+        return sorted(df["khoi"].unique().tolist())
+
+    # ---------- Helpers: Chuẩn hoá tên folder/file ----------
+    def _normalize_name(self, name: str) -> str:
+        """Chuẩn hoá tên dùng cho folder/file.
+
+        - Bỏ dấu tiếng Việt.
+        - Xoá khoảng trắng & ký tự đặc biệt.
+        - Giữ lại chỉ chữ cái, số, '_' để tránh lỗi path.
+
+        Ví dụ:
+            "Thành phố Hồ Chí Minh" -> "ThanhPhoHoChiMinh"
+            "Hà Nội"                 -> "HaNoi"
+        """
+        # Tách accent
+        normalized = unicodedata.normalize("NFD", name)
+        # Bỏ các dấu (ký tự loại Mn = Mark, Nonspacing)
+        without_accents = "".join(
+            ch for ch in normalized if unicodedata.category(ch) != "Mn"
+        )
+        # Chỉ giữ a-zA-Z0-9 và '_'
+        cleaned = "".join(
+            ch for ch in without_accents if ch.isalnum() or ch == "_"
+        )
+        return cleaned
+
+    def _build_path(self, category: str, name: str) -> str:
+        """Tạo đường dẫn lưu file ANALYSIS (thống kê) theo cấu trúc chuẩn.
+
+        Cấu trúc 4 lớp:
+            root_path /
+                {Subject_Data|Block_Data|Province_Data} /
+                    CleanData_<Tên đã chuẩn hoá> /
+                        Export_Analysis_<Tên đã chuẩn hoá>.csv
+        """
+        folder_map = {
+            "subject": "Subject_Data",
+            "block": "Block_Data",
+            "province": "Province_Data",
+        }
+
+        safe_name = self._normalize_name(name)
+        base_dir = (
+            Path(self._root_path)
+            / folder_map[category]
+            / f"CleanData_{safe_name}"
+        )
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = base_dir / f"Export_Analysis_{safe_name}.csv"
+        return str(file_path)
+
+    def _build_distribution_path(self, category: str, name: str) -> str:
+        """Tạo đường dẫn lưu file DISTRIBUTION (DataFrame phân phối) cho EDA.
+
+        Cùng cấu trúc thư mục với file thống kê, chỉ khác tên file:
+            Export_Distribution_<Tên đã chuẩn hoá>.csv
+        """
+        folder_map = {
+            "subject": "Subject_Data",
+            "block": "Block_Data",
+            "province": "Province_Data",
+        }
+
+        safe_name = self._normalize_name(name)
+        base_dir = (
+            Path(self._root_path)
+            / folder_map[category]
+            / f"CleanData_{safe_name}"
+        )
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = base_dir / f"Export_Distribution_{safe_name}.csv"
+        return str(file_path)
+
+    # ---------- Export từng nhóm dữ liệu (internal only) ----------
+    # ====== 1. Thống kê mô tả (dict → DataFrame) ======
+    def _export_subject(self, subject: str) -> None:
+        """Xuất CSV thống kê mô tả theo MÔN HỌC.
+
+        Lấy từ:
+            Analysis.get_statistics_by_subject(subject)
+        Dữ liệu trong file:
+            - Một dòng cho mỗi `nam_hoc`
+            - Các cột: mean, median, mode, std, min, max
+        """
+        stats_dict = self.analysis.get_statistics_by_subject(subject)
         df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
-        return df
-    
-    def _build_score_by_subject(self, subject: str) -> pd.DataFrame:
-        """
-        Xây dựng DataFrame thống kê điểm theo môn học từ Analysis.
-        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
-        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
-        """
-        analysis = Analysis(self.Export)
-        stats_dict = analysis.get_statistics_by_subject(subject)
-        
-        if not stats_dict:
-            return pd.DataFrame()
-        
+        df.to_csv(self._build_path("subject", subject), index=False)
+
+    def _export_block(self, block: str) -> None:
+        """Xuất CSV thống kê mô tả theo KHỐI THI."""
+        stats_dict = self.analysis.get_statistics_by_block(block)
         df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
-        return df
-    
-    def _build_score_by_city(self, city: str) -> pd.DataFrame:
-        """
-        Xây dựng DataFrame thống kê điểm theo tỉnh/thành từ Analysis.
-        Dữ liệu gốc: dict {nam_hoc: {mean, median, mode, std, ...}}
-        Trả về: DataFrame có cột 'nam_hoc' + các thống kê.
-        """
-        analysis = Analysis(self.Export)
-        stats_dict = analysis.get_statistics_by_region(city)
-        
-        if not stats_dict:
-            return pd.DataFrame()
-        
+        df.to_csv(self._build_path("block", block), index=False)
+
+    def _export_province(self, province: str) -> None:
+        """Xuất CSV thống kê mô tả theo TỈNH/THÀNH."""
+        stats_dict = self.analysis.get_statistics_by_region(province)
         df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
         return df
     

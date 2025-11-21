@@ -9,55 +9,45 @@ import time
 import pandas as pd
 import numpy as np
 
-# def main():
-#     # start = time.perf_counter()
-#     # # Khởi tạo processor và gán loader (setter sẽ ok)
-#     # ROOT_DIR = Path(__file__).resolve().parent           # thư mục PythonProject
-#     # CLEAN_DIR = ROOT_DIR / "Data" / "Clean_data_2023-2025"
-#     # CLEAN_DIR.mkdir(parents=True, exist_ok=True)         # tạo nếu chưa tồn tại
 
-#     # proc = DataProcessor()
+def main():
+    """Chạy toàn bộ pipeline: Load → Process → Analyze → Export (Clean Data)."""
+    start = time.perf_counter()
 
-#     # # Gọi pipeline xử lý rồi lấy dữ liệu
-#     # proc.process_all()
-#     # df = proc.get_processed_data()
+    # 1. Xác định thư mục gốc của project (chứa folder Module, data/raw, ...)
+    project_root = Path(__file__).resolve().parent
 
-#     # # Phân tích dữ liệu
-#     # analysis = Analysis(proc)
+    # 2. Khởi tạo DataProcessor
+    #    - Bên trong tự tạo DataLoader(project_root) và load toàn bộ file điểm
+    processor = DataProcessor(project_root)
 
-#     # # ================== MÔN HỌC ==================
-#     # # map tên hiển thị -> tên cột trong DataFrame
-#     # subject_map = {
-#     #     "Toan":  "toan",
-#     #     "Van":   "ngu_van",
-#     #     "Anh":   "ngoai_ngu",
-#     #     "Ly":    "vat_li",
-#     #     "Hoa":   "hoa_hoc",
-#     #     "Sinh":  "sinh_hoc",
-#     #     "Su":    "lich_su",
-#     #     "Dia":   "dia_li",
-#     #     "GDCD":  "gdcd",
-#     # }
+    # 3. Chạy toàn bộ quy trình tiền xử lý & chuẩn hóa dữ liệu
+    #    - Chuẩn tên cột
+    #    - Xử lý NaN, trùng
+    #    - Gộp 4 năm thành combined_data
+    #    - Kiểm tra điều kiện điểm [0, 10]
+    processor.process_all()
 
-#     # for short_name, col_name in subject_map.items():
-#     #     # dùng phân phối điểm theo môn (theo từng năm)
-#     #     df_subject = analysis.get_arregate_by_exam_subsections(col_name)
-    
-#     #     filename = CLEAN_DIR / f"Export_Analysis_Subject_{short_name}_2023-2025.csv"
-#     #     df_subject.to_csv(filename, index=False)
+    # (Tuỳ chọn) Kiểm tra nhanh kích thước dữ liệu sau xử lý
+    combined = processor.get_processed_data()
+    print(f"[INFO] Combined data shape: {combined.shape}")
 
-#     # # ================== KHỐI THI ==================
-#     # blocks = ["A", "B", "C", "D"]
+    # 4. Khởi tạo Export
+    #    - Export sẽ tự tạo Analysis(processor) bên trong
+    #    - root_path là thư mục Clean_Data_2023-2025 trong project
+    output_root = project_root / "Clean_Data_2023-2025"
+    exporter = Export(processor=processor, root_path=str(output_root))
 
-#     # for block in blocks:
-#     #     # phân phối tổng điểm theo khối & năm
-#     #     df_block = analysis.analyze_scores_by_exam_block(block)
-    
-#     #     filename = CLEAN_DIR / f"Export_Analysis_Block_{block}_2023-2025.csv"
-#     #     df_block.to_csv(filename, index=False)
+    # 5. Chạy export full:
+    #    - Subject_Data / CleanData_<mon> / Export_Analysis_<mon>.csv
+    #    - Block_Data   / CleanData_<khoi> / Export_Analysis_<khoi>.csv
+    #    - Province_Data/ CleanData_<tinh_khong_dau>/ Export_Analysis_<tinh>.csv
+    exporter.run_export_all()
 
-#     # end = time.perf_counter()
-#     # print(f"Elapsed: {end - start:.6f} s")
+    end = time.perf_counter()
+    print(f"[DONE] Pipeline completed. Clean data saved at: {output_root}")
+    print(f"Elapsed: {end - start:.6f} s")
+
 
 if __name__ == "__main__":
     main()

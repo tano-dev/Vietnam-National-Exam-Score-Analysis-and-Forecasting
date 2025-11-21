@@ -55,11 +55,22 @@ class Analysis:
     
     @block.setter
     def block(self, value: str) -> None:
+        """
+        Thiết lập khối thi cần phân tích.
+
+        Khối thi hợp lệ là toàn bộ các mã khối có trong block_subjects_map
+        (A00, A01, B00, C00, D01, X02, ...). Ở đây ta chỉ kiểm tra kiểu
+        và không rỗng, phần còn lại sẽ được kiểm soát khi truyền vào
+        _analyze_scores_by_exam_block().
+        """
+        if value is None:
+            self._block = None
+            return
+
         if not isinstance(value, str) or not value:
-            raise TypeError("Khối thi phải là chuỗi không rỗng")
-        allowed = {"A", "B", "C", "D", "Điểm gãy", "All", None}
-        if value not in allowed:
-            raise ValueError(f"Khối thi {value} không hợp lệ.")
+            raise TypeError("Khối thi phải là chuỗi không rỗng.")
+
+        # Không chặn cụ thể A,B,C,... nữa; chấp nhận mọi mã khối dạng string.
         self._block = value
 
     @property
@@ -482,29 +493,30 @@ class Analysis:
         """
         Trả về dict thống kê điểm theo môn học cho tất cả năm.
         key: nam_hoc, value: dict thống kê (mean, median, mode, std, min, max)
+
+        Dữ liệu đầu vào:
+            - Lấy từ _aggregate_by_exam_subsections(subject)
+            - DF có các cột: ['nam_hoc', 'mon_hoc', 'diem', 'so_hoc_sinh']
         """
 
-        # Lấy DataFrame phân phối điểm
-        df = self.processor.get_processed_data()
+        # Lấy DataFrame phân phối điểm theo môn học (đã gộp theo năm)
+        df = self._aggregate_by_exam_subsections(subject)
 
-        # Lọc chỉ môn cần phân tích
-        if subject != "All":
-            df = df[df["mon_hoc"] == subject]
-
-        stats_dict = {}
+        stats_dict: dict[int, dict] = {}
 
         for year, df_year in df.groupby("nam_hoc"):
-            # Mở rộng điểm theo số học sinh
+            # Với subject != "All" thì df_year chỉ chứa 1 môn;
+            # Nếu sau này dùng "All" thì df_year có nhiều môn → cộng chung.
             scores = df_year.loc[df_year.index.repeat(df_year["so_hoc_sinh"]), "diem"]
 
             if scores.empty:
                 stats_dict[year] = None
                 continue
-            
-            # Chuyển sang float cho dễ xem xét sau này
+
             mean = float(scores.mean())
             median = float(scores.median())
-            mode = float(scores.mode().iloc[0]) if not scores.mode().empty else None
+            mode_series = scores.mode()
+            mode = float(mode_series.iloc[0]) if not mode_series.empty else None
             std = float(scores.std())
             min_val = float(scores.min())
             max_val = float(scores.max())
@@ -515,7 +527,7 @@ class Analysis:
                 "mode": mode,
                 "std": std,
                 "min": min_val,
-                "max": max_val
+                "max": max_val,
             }
 
         return stats_dict
@@ -622,7 +634,8 @@ class Analysis:
     def get_score_distribution(self, subject: str) -> pd.Series:
         """Lấy phân phối điểm của một môn học cụ thể."""
         return self._analyze_score_distribution(subject)
-        
+    
+    # ----------------------- Các DataFrame thống kê dữ liệu -------------------------
     def get_arregate_by_exam_subsections(self, subject: str) -> pd.DataFrame:
         """Lấy dataframe thống kê điểm theo môn học."""
         return self._aggregate_by_exam_subsections(subject)
@@ -634,7 +647,8 @@ class Analysis:
     def compare_by_region(self, region: str) -> pd.DataFrame:
         """Lấy dataframe thống kê điểm theo tỉnh."""
         return self._compare_by_region(region)
-    
+
+    # ----------------------- Các hàm thống kê dữ liệu -------------------------
     def get_statistics_by_subject(self, subject: str) ->dict:
         """Lấy dict thống kê điểm theo môn học, gồm: mean, median, mode, std, min, max"""
         return self._get_statistics_by_subject(subject)
