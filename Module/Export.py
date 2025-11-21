@@ -216,76 +216,136 @@ class Export:
         """Xuất CSV thống kê mô tả theo TỈNH/THÀNH."""
         stats_dict = self.analysis.get_statistics_by_region(province)
         df = pd.DataFrame(stats_dict).T.reset_index().rename(columns={"index": "nam_hoc"})
-        df.to_csv(self._build_path("province", province), index=False)
+        return df
+    
+    # ----------------------------- Internal Methods -----------------------------
+    # Xuất dữ liệu phân tích điểm của một môn học cụ thể
+    def _export_score_analysis(self, subject: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm của một môn học cụ thể."""
+        analysis = Analysis(self.Export)
+        distribution = analysis.get_score_distribution(subject)
+        distribution.to_csv(filepath, index=False)
 
-    # ====== 2. DataFrame phân phối cho EDA (từ Analysis) ======
-    def _export_subject_distribution(self, subject: str) -> None:
-        """Xuất CSV phân phối điểm theo MÔN HỌC để vẽ biểu đồ EDA.
-
-        Lấy từ:
-            Analysis.get_arregate_by_exam_subsections(subject)
-
-        Cột output:
-            ['nam_hoc', 'mon_hoc', 'diem', 'so_hoc_sinh']
-        """
-        df = self.analysis.get_arregate_by_exam_subsections(subject)
-        df.to_csv(self._build_distribution_path("subject", subject), index=False)
-
-    def _export_block_distribution(self, block: str) -> None:
-        """Xuất CSV phân phối TỔNG ĐIỂM theo KHỐI THI để EDA.
-
-        Lấy từ:
-            Analysis.analyze_scores_by_exam_block(block)
-
-        Cột output:
-            ['khoi', 'nam_hoc', 'tong_diem', 'so_hoc_sinh']
-        """
-        df = self.analysis.analyze_scores_by_exam_block(block)
-        df.to_csv(self._build_distribution_path("block", block), index=False)
-
-    def _export_province_distribution(self, province: str) -> None:
-        """Xuất CSV phân phối TỔNG ĐIỂM theo TỈNH/THÀNH để EDA.
-
-        Lấy từ:
-            Analysis.compare_by_region(province)
-
-        Cột output:
-            ['nam_hoc', 'tinh', 'tong_diem', 'so_hoc_sinh']
-        """
-        df = self.analysis.compare_by_region(province)
-        df.to_csv(self._build_distribution_path("province", province), index=False)
-
-    # ==================== PUBLIC METHODS (API) ====================
-    def run_export_all(self) -> None:
-        """Chạy toàn bộ quá trình export để sinh Clean Data cho EDA.
-
-        Quy trình:
-            1. Lấy danh sách môn học, khối thi, tỉnh/thành đang có trong data.
-            2. Với mỗi nhóm, ghi ra HAI loại file:
-                - Export_Analysis_<name>.csv      (thống kê mô tả)
-                - Export_Distribution_<name>.csv  (DataFrame phân phối cho EDA)
-            3. Tự động tạo đầy đủ thư mục & file CSV tương ứng.
-        """
-        subjects = self._detect_subjects()
-        blocks = self._detect_blocks()
-        provinces = self._detect_provinces()
-        _ = self._detect_years()  # chỉ để đảm bảo có cột nam_hoc, không dùng vào tên file
-
-        # Subject Data
-        for s in subjects:
-            self._export_subject(s)
-            self._export_subject_distribution(s)
-
-        # Block Data
-        for b in blocks:
-            self._export_block(b)
-            self._export_block_distribution(b)
-
-        # Province Data
-        for p in provinces:
-            self._export_province(p)
-            self._export_province_distribution(p)
-
-    # ==================== REPRESENTATION / UTILITIES ====================
-    def __repr__(self) -> str:
-        return f"<Export root='{self._root_path}' processor={type(self._processor).__name__}>"
+    # Xuất dữ liệu phân tích điểm theo môn học.
+    def _export_subject_analysis(self, subject: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo môn học."""
+        analysis = Analysis(self.Export)
+        stats = analysis.get_arregate_by_exam_subsections(subject)
+        stats.to_csv(filepath, index=False)
+    
+    # Xuất dữ liệu phân tích điểm theo khối thi.
+    def _export_block_analysis(self, block: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo khối thi."""
+        analysis = Analysis(self.Export)
+        stats = analysis.analyze_scores_by_exam_block(block)
+        stats.to_csv(filepath, index=False)
+    
+    # Xuất dữ liệu phân tích điểm theo tỉnh thành.
+    def _export_city_analysis(self, city: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo tỉnh thành."""
+        analysis = Analysis(self.Export)
+        stats = analysis.compare_by_region(city)
+        stats.to_csv(filepath, index=False)
+        
+        
+    
+    # Xuất dữ liệu điểm theo khối thi
+    def _export_score_by_block(self, block: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo khối thi."""
+        analysis = Analysis(self.Export)
+        stats = analysis.get_statistics_by_block(block)
+        filename = f"Export_Score_Block_{block}.csv"
+        stats.to_csv(filename, index=False)
+    
+    # Xuất dữ liệu điểm theo môn học
+    def _export_score_by_subject(self, subject: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo môn học."""
+        analysis = Analysis(self.Export)
+        distribution = analysis.get_statistics_by_subject(subject)
+        distribution.to_csv(filepath, index=False)
+    
+    # Xuất dữ liệu điểm theo tỉnh thành
+    def _export_score_by_city(self, city: str, filepath: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo tỉnh thành."""
+        analysis = Analysis(self.Export)
+        comparison = analysis.get_statistics_by_region(city)
+        comparison.to_csv(filepath, index=False)
+    
+    # ==================== PUBLIC API METHODS: XUẤT DỮ LIỆU ====================
+    # Xuất dữ liệu điểm theo khối thi ra file CSV
+    # def export_score_by_block(self, block: str, file_path: str) -> None:
+    #     """Xuất dữ liệu điểm theo khối thi ra file CSV."""
+    #     # Analysis object is now created once in __init__ and reused
+    #     analysis = Analysis(self.Export)
+    #     stats = analysis.get_statistics_by_block(block)
+    #     stats.to_csv(file_path)
+        
+    # # Xuất dữ liệu điểm theo môn học ra file CSV
+    # def export_score_by_subject(self, subject: str, file_path: str) -> None:
+    #     """Xuất dữ liệu điểm theo môn học ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     distribution = analysis.get_statistics_by_subject(subject)
+    #     distribution.to_csv(file_path, header=['Score Distribution'])
+    # # Xuất dữ liệu điểm theo tỉnh thành ra file CSV
+    # def export_score_by_city(self, city: str, file_path: str) -> None:
+    #     """Xuất dữ liệu điểm theo tỉnh thành ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     comparison = analysis.get_statistics_by_region(city)
+    #     comparison.to_csv(file_path)
+        
+    # # Xuất dữ liệu phân tích điểm của một môn học cụ thể
+    # def export_score_analysis(self, subject: str, file_path: str) -> None:
+    #     """Xuất dữ liệu phân tích điểm của một môn học cụ thể ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     distribution = analysis.get_score_distribution(subject)
+    #     distribution.to_csv(file_path, header=['Score Distribution'])
+    # # Xuất dữ liệu phân tích điểm theo môn học.
+    # def export_subject_analysis(self, subject: str, file_path: str) -> None:
+    #     """Xuất dữ liệu phân tích điểm theo môn học ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     stats = analysis.get_aggregate_by_exam_subsections(subject)
+    #     stats.to_csv(file_path)
+        
+    # # Xuất dữ liệu phân tích điểm theo khối thi.
+    # def export_block_analysis(self, block: str, file_path: str) -> None:
+    #     """Xuất dữ liệu phân tích điểm theo khối thi ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     stats = analysis.analyze_scores_by_exam_block(block)
+    #     stats.to_csv(file_path)
+        
+    # # Xuất dữ liệu phân tích điểm theo tỉnh thành.  
+    # def export_city_analysis(self, city: str, file_path: str) -> None:
+    #     """Xuất dữ liệu phân tích điểm theo tỉnh thành ra file CSV."""
+    #     analysis = Analysis(self.Export)
+    #     stats = analysis.compare_by_region(city)
+    #     stats.to_csv(file_path)
+    
+    # ==================== PUBLIC API METHODS: XUẤT DỮ LIỆU VỚI RETURN ====================
+    # Xuất dữ liệu điểm theo khối thi ra DataFrame
+    def export_score_by_block(self, block: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo khối thi ra DataFrame."""
+        return self._export_score_by_block(block)
+    # Xuất dữ liệu điểm theo môn học ra DataFrame
+    def export_score_by_subject(self, subject: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo môn học ra DataFrame."""
+        return self._export_score_by_subject(subject)
+    # Xuất dữ liệu điểm theo tỉnh thành ra DataFrame
+    def export_score_by_city(self, city: str) -> pd.DataFrame:
+        """Xuất dữ liệu điểm theo tỉnh thành ra DataFrame."""
+        return self._export_score_by_city(city)
+    # Xuất dữ liệu phân tích điểm của một môn học cụ thể ra DataFrame
+    def export_score_analysis(self, subject: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm của một môn học cụ thể ra DataFrame."""
+        return self._export_score_analysis(subject)
+    # Xuất dữ liệu phân tích điểm theo môn học ra DataFrame
+    def export_subject_analysis(self, subject: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo môn học ra DataFrame."""
+        return self._export_subject_analysis(subject)
+    # Xuất dữ liệu phân tích điểm theo khối thi ra DataFrame
+    def export_block_analysis(self, block: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo khối thi ra DataFrame."""
+        return self._export_block_analysis(block)
+    # Xuất dữ liệu phân tích điểm theo tỉnh thành ra DataFrame
+    def export_city_analysis(self, city: str) -> pd.DataFrame:
+        """Xuất dữ liệu phân tích điểm theo tỉnh thành ra DataFrame."""
+        return self._export_city_analysis(city)
