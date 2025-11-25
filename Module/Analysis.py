@@ -1,153 +1,174 @@
-from Module.Processor_Data import Processor_Data
+from Module.Processor_Data import DataProcessor
 import pandas as pd
 import numpy as np
 
 class Analysis:
-    # =================== INTERNAL PRIVATE METHODS: PHÂN TÍCH DỮ LIỆU ===================
-    # ----------------------- Khai báo và thiết lập thuộc tính -------------------------
-    """"Lớp để phân tích dữ liệu đã được xử lý. Thiết lập nhóm thuộc tính qua setter với những yêu cầu cụ thể:
-    - Theo môn học, lấy dữ liệu đã xử lý từ DataProcessor.
-    - Theo khối thi, lấy dữ liệu đã xử lý từ DataProcessor.
-    - Theo tỉnh thành, lấy dữ liệu đã xử lý từ DataProcessor.
-    
-    Xây dựng các phương thức để lấy dữ liệu thống kê stats:
-    - Phân phối điểm theo môn học.
-    - Thống kê điểm theo khối thi.
-    - So sánh điểm theo tỉnh thành.
-    
-    Attributes (public API):
-        processor (Processor_Data): Đối tượng DataProcessor để lấy dữ liệu đã xử lý.
-    
-    """
-    # Slots: Cố định các thuộc tính có thể sử dụng
+    # Slots: Cố định các thuộc tính
     __slots__ = (
-        "_processor",          # Đối tượng DataProcessor để lấy dữ liệu đã xử lý
+        "_processor",
+        "_subject",
+        "_block",
+        "_region",
     )
     
     # ------------------------ Setter và Getter -------------------------
     @property
-    def processor(self) -> Processor_Data:
-        """Đối tượng DataProcessor để lấy dữ liệu đã xử lý."""
-        return self._processor
-    
+    def processor(self) -> DataProcessor: return self._processor
     @processor.setter
-    def processor(self, value: Processor_Data) -> None:
-        self._processor = value
+    def processor(self, value: DataProcessor) -> None: self._processor = value
     
-    # -------- Khởi tạo và thiết lập thuộc tính --------
-    def __init__(self, processor: Processor_Data):
+    @property
+    def subject(self) -> str: return self._subject
+    @subject.setter
+    def subject(self, value: str): self._subject = value
+
+    @property
+    def block(self) -> str: return self._block
+    @block.setter
+    def block(self, value: str): self._block = value
+
+    @property
+    def region(self) -> str: return self._region
+    @region.setter
+    def region(self, value: str): self._region = value
+       
+    # --- KHỞI TẠO ---
+    def __init__(self, processor: DataProcessor):
         self.processor = processor
-    
-    # ----------------------------- Internal Methods -----------------------------
-    # Phân tích phân phối điểm của một môn học cụ thể
+        self._subject = None
+        self._block = None
+        self._region = None
+        
+    # ----------------------------- Optimized Methods -----------------------------
+
     def _analyze_score_distribution(self, subject: str) -> pd.Series:
-        """Phân tích phân phối điểm của một môn học cụ thể."""
         df = self.processor.get_processed_data()
         if subject not in df.columns:
-            raise ValueError(f"Môn học '{subject}' không tồn tại trong dữ liệu.")
+            return pd.Series()
         return df[subject].value_counts().sort_index()
     
-    # ===== CÁC HÀM NHÓM PHÂN TÍCH DỮ LIỆU 
-    # #Phân tích thống kê điểm theo môn học.
-    # Requirements: Trả về DataFrame thống kê điểm theo môn học
-    # def _aggregate_by_exam_subsections(self, block: str) -> pd.DataFrame:
-    # Your Code start here
-    def _aggregate_by_exam_subsections(self, block: str) -> pd.DataFrame:
+    def _aggregate_by_exam_subsections(self, subject: str) -> pd.DataFrame:
         df = self.processor.get_processed_data()
-        # Chỉ lấy các cột môn học số
         score_columns = df.select_dtypes(include='number').columns.difference(['sbd', 'nam_hoc'])
+        
+        target_cols = [subject] if subject != "All" else score_columns
+        if subject != "All" and subject not in df.columns:
+             return pd.DataFrame()
 
-        # Thống kê cơ bản bằng describe
-        stats_df = df[score_columns].describe().transpose()
-        stats_df.rename(columns={'50%': 'median'}, inplace=True)
+        results = []
+        for col in target_cols:
+            if col not in df.columns: continue
+            temp_df = df.groupby(['nam_hoc', col]).size().reset_index(name='so_hoc_sinh')
+            temp_df.rename(columns={col: 'diem'}, inplace=True)
+            temp_df['mon_hoc'] = col
+            results.append(temp_df)
 
-        # Thêm mode do df.describle() không có
-        stats_df['mode'] = [df[col].mode()[0] if not df[col].mode().empty else None for col in score_columns]
+        if not results:
+            return pd.DataFrame(columns=['nam_hoc', 'mon_hoc', 'diem', 'so_hoc_sinh'])
+            
+        return pd.concat(results, ignore_index=True)[['nam_hoc', 'mon_hoc', 'diem', 'so_hoc_sinh']]
 
-        # Chọn các cột cần thiết
-        stats_df = stats_df[['mean', 'median', 'mode', 'std', 'min', 'max']]
+    # --- ĐÃ CẬP NHẬT: Thêm đầy đủ mã khối A00, B00... ---
+    def _analyze_scores_by_exam_block(self, block: str) -> pd.DataFrame:
+        df = self.processor.get_processed_data()
+        
+        # Map đầy đủ các khối thi phổ biến
+        block_subjects_map = {
+            # Khối A
+            'A': ['toan', 'vat_li', 'hoa_hoc'],
+            'A00': ['toan', 'vat_li', 'hoa_hoc'],
+            'A01': ['toan', 'vat_li', 'ngoai_ngu'],
+            # Khối B
+            'B': ['toan', 'hoa_hoc', 'sinh_hoc'],
+            'B00': ['toan', 'hoa_hoc', 'sinh_hoc'],
+            # Khối C
+            'C': ['ngu_van', 'lich_su', 'dia_li'],
+            'C00': ['ngu_van', 'lich_su', 'dia_li'],
+            # Khối D
+            'D': ['toan', 'ngu_van', 'ngoai_ngu'],
+            'D01': ['toan', 'ngu_van', 'ngoai_ngu'],
+            # Khối Năng khiếu / Khác (nếu cần)
+            'H00': ['ngu_van', 've_nt', 've_mt'], # Ví dụ
+        }
+        
+        blocks_to_run = block_subjects_map.keys() if block == "All" else [block]
+        results = []
 
-        # Đưa index thành cột 'mon_hoc'
-        stats_df = stats_df.reset_index().rename(columns={'index': 'mon_hoc'})
+        for b in blocks_to_run:
+            subjects = block_subjects_map.get(b, [])
+            if not subjects: continue
+            
+            # Kiểm tra các môn có tồn tại trong dữ liệu không
+            valid_cols = [s for s in subjects if s in df.columns]
+            
+            # Nếu thiếu môn (ví dụ năm đó không thi môn Vẽ) -> Bỏ qua
+            if len(valid_cols) < len(subjects): continue 
 
-        return stats_df
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # Your Code end here 
-    
-    
-    # # Phân tích điểm theo khối thi cụ thể
-    # Requiremnts: Trả về DataFrame phân tích điểm theo khối thi sau khi được nhóm. Có xây dựng map khối thi -> cột điểm
-    # def _analyze_scores_by_exam_block(self, block: str) -> pd.Data
-    # Your Code start here
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # Your Code end here
-    
-    # # Phân tích so sánh điểm theo tỉnh thành.
-    # Requirements: Trả về DataFrame so sánh điểm theo tỉnh thành. Xây dựng map tỉnh thành ( sau đợt chuyển đổi, dùng cho dự báo 2026) -> cột điểm
-    # def _compare_by_region(self, region: str) -> pd.DataFrame:
-    # Your Code start here
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # Your Code end here
-    
-    
-    # ===== CÁC HÀM THỐNG KÊ DỮ LIỆU    
-    # # def _get_statistics_by_subject(self, subject: str) -> dict:
-    # # Requirements: Trả về dict thống kê điểm theo môn học( khối thi , tỉnh thành ), gồm: mean, median, mode, std, min, max
-    # #     """Lấy thống kê điểm theo môn học."""
-    # Your Code start here
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # Your Code end here
-    
-    
-    # ======================== PUBLIC METHODS: PHÂN TÍCH DỮ LIỆU =========================
-    # ----------------------- Các hàm phân tích dữ liệu -------------------------
+            # Lọc ra các thí sinh thi ĐỦ các môn trong khối (không bị NaN môn nào)
+            # dropna rất quan trọng để tính tổng điểm chính xác
+            df_b = df[['nam_hoc'] + valid_cols].dropna().copy()
+            
+            if df_b.empty: continue
+
+            # Tính tổng điểm
+            df_b['tong_diem'] = df_b[valid_cols].sum(axis=1)
+            
+            # Groupby đếm số lượng
+            dist = df_b.groupby(['nam_hoc', 'tong_diem']).size().reset_index(name='so_hoc_sinh')
+            dist['khoi'] = b
+            results.append(dist)
+
+        if not results:
+            return pd.DataFrame(columns=['khoi', 'nam_hoc', 'tong_diem', 'so_hoc_sinh'])
+
+        return pd.concat(results, ignore_index=True)
+
+    def _compare_by_region(self, region: str) -> pd.DataFrame:
+        df = self.processor.get_processed_data().copy()
+        
+        # Map mã tỉnh từ SBD
+        if 'tinh' not in df.columns and 'sbd' in df.columns:
+             df['ma_tinh'] = df['sbd'].astype(str).str.zfill(8).str[:2]
+             df['tinh'] = df['ma_tinh'] 
+
+        if region != "ALL":
+            df = df[df['tinh'] == region]
+
+        score_cols = df.select_dtypes(include='number').columns.difference(['nam_hoc'])
+        # Tính tổng điểm các môn thí sinh đó thi
+        df['tong_diem'] = df[score_cols].sum(axis=1)
+        
+        return df.groupby(['nam_hoc', 'tinh', 'tong_diem']).size().reset_index(name='so_hoc_sinh')
+
+    # --- CÁC HÀM THỐNG KÊ ---
+    def _get_statistics_by_subject(self, subject: str) -> dict:
+        df_agg = self._aggregate_by_exam_subsections(subject)
+        stats_dict = {}
+        for year, grp in df_agg.groupby("nam_hoc"):
+            values = np.repeat(grp['diem'].values, grp['so_hoc_sinh'].values)
+            if len(values) == 0: continue
+            stats_dict[year] = {
+                "mean": float(np.mean(values)),
+                "median": float(np.median(values)),
+                "mode": float(grp.loc[grp['so_hoc_sinh'].idxmax(), 'diem']),
+                "std": float(np.std(values)),
+                "min": float(values.min()),
+                "max": float(values.max())
+            }
+        return stats_dict
+
+    # --- PUBLIC API ---
     def get_score_distribution(self, subject: str) -> pd.Series:
-        """Lấy phân phối điểm của một môn học cụ thể."""
         return self._analyze_score_distribution(subject)
+    def get_arregate_by_exam_subsections(self, subject: str) -> pd.DataFrame:
+        return self._aggregate_by_exam_subsections(subject)
+    def analyze_scores_by_exam_block(self, block: str) -> pd.DataFrame:
+        return self._analyze_scores_by_exam_block(block)
+    def compare_by_region(self, region: str) -> pd.DataFrame:
+        return self._compare_by_region(region)
+    def get_statistics_by_subject(self, subject: str) -> dict:
+        return self._get_statistics_by_subject(subject)
+    def get_statistics_by_block(self, block: str) -> dict:
+        return {} 
+    def get_statistics_by_region(self, region: str) -> dict:
+        return {}
