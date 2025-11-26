@@ -93,10 +93,9 @@ class Analysis:
     # ----------------------------- Internal Methods -----------------------------
     # Phân tích phân phối điểm của một môn học cụ thể
     def _analyze_score_distribution(self, subject: str) -> pd.Series:
-        """Phân tích phân phối điểm của một môn học cụ thể."""
         df = self.processor.get_processed_data()
         if subject not in df.columns:
-            raise ValueError(f"Môn học '{subject}' không tồn tại trong dữ liệu.")
+            return pd.Series()
         return df[subject].value_counts().sort_index()
     
     # ===== CÁC HÀM NHÓM PHÂN TÍCH DỮ LIỆU 
@@ -117,6 +116,10 @@ class Analysis:
 
         # Các cột điểm (trừ sbd, nam_hoc)
         score_columns = df.select_dtypes(include='number').columns.difference(['sbd', 'nam_hoc'])
+        
+        target_cols = [subject] if subject != "All" else score_columns
+        if subject != "All" and subject not in df.columns:
+             return pd.DataFrame()
 
         records = []
 
@@ -632,7 +635,6 @@ class Analysis:
     # ======================== PUBLIC METHODS: PHÂN TÍCH DỮ LIỆU =========================
     # ----------------------- Các hàm phân tích dữ liệu -------------------------
     def get_score_distribution(self, subject: str) -> pd.Series:
-        """Lấy phân phối điểm của một môn học cụ thể."""
         return self._analyze_score_distribution(subject)
     
     # ----------------------- Các DataFrame thống kê dữ liệu -------------------------
