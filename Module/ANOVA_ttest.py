@@ -122,63 +122,73 @@ class ANOVA_ttest:
         Dữ liệu self._data có thể:
         - Đã được lọc sẵn theo 1 môn (không có cột 'mon_hoc').
         - Hoặc chứa nhiều môn (có cột 'mon_hoc'), khi đó sẽ lọc theo `subject`.
+
+        Trả về kết quả dưới dạng dict gồm: môn học, năm thứ 1, năm thứ 2, giá trị thống kê t,
+        p-value, loại kiểm định, hướng kiểm dịnh, giá trị Cohen's d, mức độ khác biệt và kết luận.
         """
+        # Lấy dữ liệu gốc
         df = self._data
 
-        # Kiểm tra các cột bắt buộc
+        # Kiểm tra các cột bắt buộc có trong DataFrame không
         required = [self._group_col, self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
-        # Nếu có cột 'mon_hoc' → lọc theo tên môn; ngược lại, coi như đã lọc.
+        # Nếu có cột 'mon_hoc' → lọc theo tên môn; ngược lại, coi như đã lọc sẵn 1 môn
         if "mon_hoc" in df.columns:
-            df_sub = df[df["mon_hoc"] == subject]
+            df_sub = df[df["mon_hoc"] == subject]   # Lọc môn học
             if df_sub.empty:
                 raise ValueError(f"Môn '{subject}' không tồn tại trong dữ liệu.")
         else:
             df_sub = df
 
-        # Mở rộng dữ liệu 2 năm
+        # Lấy dữ liệu điểm thi cho 2 năm và mở rộng theo số học sinh
         g1 = np.repeat(
             df_sub[df_sub[self._group_col] == year1][self._score_col].values,
             df_sub[df_sub[self._group_col] == year1]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
-
         g2 = np.repeat(
             df_sub[df_sub[self._group_col] == year2][self._score_col].values,
             df_sub[df_sub[self._group_col] == year2]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
 
+        # Kiểm tra môn đó có dữ liệu trong 2 năm không
         if g1.size == 0 or g2.size == 0:
             raise ValueError("Một trong hai năm không có dữ liệu cho môn này.")
 
-        # T-test hai mẫu độc lập (Welch)
+        # Tính t-test hai mẫu độc lập (Welch)
         t_stat, p_two_tailed = stats.ttest_ind(g1, g2, equal_var=False)
 
-        # Xác định hướng kiểm định nếu one-tail
+        # Xác định alternative dùng để xác định kiểm định theo 2 phía hay 1 phía
         if alternative == "auto":
+            # Giả định điểm năm sau thấp hơn năm trước nếu year2 > year1
             alternative = "less" if year2 > year1 else "greater"
 
+        # Tính p-value theo 1 phía nếu muốn kiểm định 1 phía
         if one_tail:
+            # Nếu giả thuyết: năm sau thấp hơn năm trước
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
+            # Nếu giả thuyết: năm sau cao hơn năm trước
             elif alternative == "greater":
                 p_val_raw = p_two_tailed / 2 if t_stat > 0 else 1 - p_two_tailed / 2
+            # Báo lỗi nếu alternative không hợp lệ
             else:
                 raise ValueError("alternative phải là 'less', 'greater' hoặc 'auto'.")
+        # Nếu kiểm định 2 phía
         else:
             p_val_raw = p_two_tailed
 
-        # Chuẩn hóa p-value
+        # Chuẩn hóa p-value (tránh 0 tuyệt đối, thêm p_value_text)
         p_val, p_text = self._clip_p_value(p_val_raw)
 
-        # Hiệu ứng Cohen's d
-        mean_diff = g1.mean() - g2.mean()
-        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)
-        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0
+        # Tính effect size (Cohen's d)
+        mean_diff = g1.mean() - g2.mean()  # Hiệu số trung bình giữa 2 năm
+        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)  # Độ lệch chuẩn gộp
+        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0  # Cohen's d
 
-        # Độ mạnh hiệu ứng
+        # Xác định mức độ khác biệt dựa trên |Cohen's d|
         ad = abs(cohens_d)
         if ad < 0.2:
             strength = "Rất yếu"
@@ -189,18 +199,19 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict
         return {
-            "subject": subject,                       # Tên môn học
-            "year1": year1,                           # Năm thứ nhất
-            "year2": year2,                           # Năm thứ hai
-            "t_stat": float(t_stat),                  # Giá trị thống kê t
-            "p_value": p_val,                         # p-value đã clip
-            "p_value_text": p_text,                   # Chuỗi mô tả p
-            "one_tail": one_tail,                     # Đang dùng kiểm định 1 phía?
-            "alternative": alternative,               # Hướng kiểm định 1 phía
-            "cohens_d": float(cohens_d),              # Mức độ hiệu ứng Cohen's d
-            "effect_strength": strength,              # Đánh giá định tính
-            "interpretation": (
+            "subject": subject,           # Tên môn học
+            "year1": year1,              # Năm thứ nhất
+            "year2": year2,              # Năm thứ hai
+            "t_stat": float(t_stat),     # Giá trị thống kê t
+            "p_value": p_val,            # p-value đã clip
+            "p_value_text": p_text,      # Chuỗi mô tả p
+            "one_tail": one_tail,        # Kiểm định 1 phía hay 2 phía
+            "alternative": alternative,  # Hướng kiểm định: 'less' hoặc 'greater'
+            "cohens_d": float(cohens_d), # Giá trị Cohen's d
+            "effect_strength": strength, # Mức độ khác biệt theo Cohen's d
+            "interpretation": (          # Kết luận
                 "Có sự khác biệt."
                 if p_val < 0.05 else
                 "Không có sự khác biệt thống kê."
@@ -220,14 +231,20 @@ class ANOVA_ttest:
 
         - Nếu DataFrame có cột 'khoi' → lọc theo block.
         - Nếu không có cột 'khoi' → coi như đã là dữ liệu của 1 khối.
+
+        Trả về kết quả dưới dạng dict gồm: khối thi, năm thứ 1, năm thứ 2, giá trị thống kê t,
+        p-value, loại kiểm định, hướng kiểm dịnh, giá trị Cohen's d, mức độ khác biệt và kết luận.
         """
+        # Lấy dữ liệu gốc
         df = self._data
 
+        # Kiểm tra các cột bắt buộc có trong DataFrame không
         required = [self._group_col, self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
+        # Lọc theo khối nếu có cột 'khoi', nếu không coi như df đã là dữ liệu 1 khối
         if "khoi" in df.columns:
             df_blk = df[df["khoi"] == block]
             if df_blk.empty:
@@ -235,6 +252,7 @@ class ANOVA_ttest:
         else:
             df_blk = df
 
+        # Lấy dữ liệu điểm thi cho 2 năm và mở rộng theo số học sinh
         g1 = np.repeat(
             df_blk[df_blk[self._group_col] == year1][self._score_col].values,
             df_blk[df_blk[self._group_col] == year1]["so_hoc_sinh"].values.astype(int),
@@ -245,31 +263,41 @@ class ANOVA_ttest:
             df_blk[df_blk[self._group_col] == year2]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
 
+        # Kiểm tra khối đó có dữ liệu trong 2 năm không
         if g1.size == 0 or g2.size == 0:
             raise ValueError("Một trong hai năm không có dữ liệu cho khối này.")
 
+        # Tính t-test hai mẫu độc lập (Welch)
         t_stat, p_two_tailed = stats.ttest_ind(g1, g2, equal_var=False)
 
+        # Xác định alternative dùng để xác định kiểm định theo 2 phía hay 1 phía
         if alternative == "auto":
-            alternative = "less" if year2 > year1 else "greater"
+            alternative = "less" if year2 > year1 else "greater"  # Giả định năm sau thấp hơn
 
+        # Tính p-value theo 1 phía nếu muốn tính 1 phía
         if one_tail:
+            # Nếu giả thuyết: năm sau thấp hơn năm trước
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
+            # Nếu giả thuyết: năm sau cao hơn năm trước
             elif alternative == "greater":
                 p_val_raw = p_two_tailed / 2 if t_stat > 0 else 1 - p_two_tailed / 2
+            # Báo lỗi nếu alternative không hợp lệ
             else:
                 raise ValueError("alternative must be 'less', 'greater', or 'auto'.")
+        # Nếu kiểm định 2 phía
         else:
             p_val_raw = p_two_tailed
 
         # Chuẩn hóa p-value
         p_val, p_text = self._clip_p_value(p_val_raw)
 
-        mean_diff = g1.mean() - g2.mean()
-        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)
-        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0
+        # Tính effect size (Cohen's d)
+        mean_diff = g1.mean() - g2.mean()  # Hiệu số trung bình giữa 2 năm
+        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)  # Độ lệch chuẩn gộp
+        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0  # Cohen's d
 
+        # Xác định mức độ khác biệt dựa trên |Cohen's d|
         ad = abs(cohens_d)
         if ad < 0.2:
             strength = "Rất yếu"
@@ -280,18 +308,19 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict    
         return {
-            "block": block,
-            "year1": year1,
-            "year2": year2,
-            "t_stat": float(t_stat),
-            "p_value": p_val,
-            "p_value_text": p_text,
-            "one_tail": one_tail,
-            "alternative": alternative,
-            "cohens_d": float(cohens_d),
-            "effect_strength": strength,
-            "interpretation": (
+            "block": block,               # Tên khối thi
+            "year1": year1,               # Năm thứ nhất
+            "year2": year2,               # Năm thứ hai
+            "t_stat": float(t_stat),      # Giá trị thống kê t
+            "p_value": p_val,             # p-value đã clip
+            "p_value_text": p_text,       # Chuỗi mô tả p
+            "one_tail": one_tail,         # Kiểm định 1 phía hay 2 phía
+            "alternative": alternative,   # Hướng kiểm định
+            "cohens_d": float(cohens_d),  # Giá trị Cohen's d
+            "effect_strength": strength,  # Mức độ khác biệt
+            "interpretation": (           # Kết luận
                 "Có sự khác biệt."
                 if p_val < 0.05 else
                 "Không có sự khác biệt thống kê."
@@ -307,18 +336,26 @@ class ANOVA_ttest:
         one_tail: bool = False,
         alternative: str = "auto",
     ) -> dict:
-        """T-test điểm giữa 2 tỉnh trong 1 năm."""
+        """T-test điểm giữa 2 tỉnh trong 1 năm.
+
+        Trả về kết quả dưới dạng dict gồm: năm, tỉnh thứ 1, tỉnh thứ 2, giá trị thống kê t,
+        p-value, loại kiểm định, hướng kiểm dịnh, giá trị Cohen's d, mức độ khác biệt và kết luận.
+        """
+        # Lấy dữ liệu gốc
         df = self._data
 
+        # Kiểm tra các cột bắt buộc
         required = [self._group_col, "tinh", self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
+        # Lọc theo năm
         df_year = df[df[self._group_col] == year]
         if df_year.empty:
             raise ValueError(f"Năm {year} không có dữ liệu.")
 
+        # Lấy dữ liệu điểm cho 2 tỉnh và mở rộng theo số học sinh
         g1 = np.repeat(
             df_year[df_year["tinh"] == province1][self._score_col].values,
             df_year[df_year["tinh"] == province1]["so_hoc_sinh"].values.astype(int),
@@ -328,31 +365,41 @@ class ANOVA_ttest:
             df_year[df_year["tinh"] == province2]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
 
+        # Kiểm tra tỉnh đó có dữ liệu không
         if g1.size == 0 or g2.size == 0:
             raise ValueError("Một trong hai tỉnh không có dữ liệu trong năm này.")
 
+        # Xác định alternative (hướng kiểm định) nếu để auto
         if alternative == "auto":
             alternative = "less"  # giả định province2 < province1 (có thể chỉnh tay)
 
+        # Tính t-test
         t_stat, p_two_tailed = stats.ttest_ind(g1, g2, equal_var=False)
 
+        # Tính p-value theo 1 phía nếu muốn kiểm định 1 phía
         if one_tail:
+            # Nếu giả thuyết: tỉnh 2 thấp hơn tỉnh 1
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
+            # Nếu giả thuyết: tỉnh 2 cao hơn tỉnh 1
             elif alternative == "greater":
                 p_val_raw = p_two_tailed / 2 if t_stat > 0 else 1 - p_two_tailed / 2
+            # Báo lỗi nếu alternative không hợp lệ
             else:
                 raise ValueError("alternative must be 'less' or 'greater'.")
+        # Nếu kiểm định 2 phía
         else:
             p_val_raw = p_two_tailed
 
         # Chuẩn hóa p-value
         p_val, p_text = self._clip_p_value(p_val_raw)
 
-        mean_diff = g1.mean() - g2.mean()
-        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)
-        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0
+        # Tính effect size (Cohen's d)
+        mean_diff = g1.mean() - g2.mean()  # Hiệu số trung bình giữa 2 tỉnh
+        pooled_sd = np.sqrt((g1.var(ddof=1) + g2.var(ddof=1)) / 2)  # Độ lệch chuẩn gộp
+        cohens_d = mean_diff / pooled_sd if pooled_sd > 0 else 0.0  # Cohen's d
 
+        # Xác định mức độ khác biệt
         ad = abs(cohens_d)
         if ad < 0.2:
             strength = "Rất yếu"
@@ -363,18 +410,19 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict    
         return {
-            "year": year,
-            "province1": province1,
-            "province2": province2,
-            "t_stat": float(t_stat),
-            "p_value": p_val,
-            "p_value_text": p_text,
-            "one_tail": one_tail,
-            "alternative": alternative,
-            "cohens_d": float(cohens_d),
-            "effect_strength": strength,
-            "interpretation": (
+            "year": year,                 # Năm cần kiểm định
+            "province1": province1,       # Tỉnh thứ nhất
+            "province2": province2,       # Tỉnh thứ hai
+            "t_stat": float(t_stat),      # Giá trị thống kê t
+            "p_value": p_val,             # p-value đã clip
+            "p_value_text": p_text,       # Chuỗi mô tả p
+            "one_tail": one_tail,         # Kiểm định 1 phía hay 2 phía
+            "alternative": alternative,   # Hướng kiểm định
+            "cohens_d": float(cohens_d),  # Giá trị Cohen's d
+            "effect_strength": strength,  # Mức độ khác biệt
+            "interpretation": (           # Kết luận
                 "Có sự khác biệt."
                 if p_val < 0.05 else
                 "Không có sự khác biệt thống kê."
@@ -387,44 +435,53 @@ class ANOVA_ttest:
 
     # ANOVA môn học
     def _anova_subject(self, subject: str) -> dict:
-        """ANOVA điểm môn học giữa các năm."""
+        """
+        Thực hiện kiểm định ANOVA cho môn học
+
+        Trả về dict gồm môn học, giá trị thống kê anova, giá trị p-value, kết luận
+        """
+        # Lấy dữ liệu gốc
         df = self._data
 
+        # Kiểm tra cột bắt buộc
         required = [self._group_col, self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
-        # Nếu có 'mon_hoc' → lọc; nếu không, dùng toàn bộ (đã là 1 môn).
+        # Nếu có 'mon_hoc' → lọc; nếu không, dùng toàn bộ (đã là 1 môn)
         if "mon_hoc" in df.columns:
-            df_sub = df[df["mon_hoc"] == subject]
+            df_sub = df[df["mon_hoc"] == subject]  # Lọc môn học        
             if df_sub.empty:
                 raise ValueError(f"Môn '{subject}' không tồn tại trong dữ liệu.")
         else:
             df_sub = df
 
-        # Gom nhóm theo năm
+        # Tạo nhóm lưu số điểm của học sinh theo năm học
         groups = []
         for _, g in df_sub.groupby(self._group_col):
             arr = np.repeat(
                 g[self._score_col].astype(float),
-                g["so_hoc_sinh"].astype(int)
+                g["so_hoc_sinh"].astype(int)   # Mở rộng dữ liệu theo số học sinh
             )
             if arr.size > 0:
                 groups.append(arr)
 
+        # Nếu có ít hơn 2 năm thì không chạy được ANOVA
         if len(groups) < 2:
             raise ValueError("Không đủ nhóm để chạy ANOVA (>=2 năm).")
 
+        # Tính ANOVA
         f_stat, p_raw = stats.f_oneway(*groups)
         anova_p, anova_p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả
         return {
-            "subject": subject,
-            "anova_f": float(f_stat),
-            "anova_p": anova_p,
-            "anova_p_text": anova_p_text,
-            "interpretation": (
+            "subject": subject,           # Tên môn
+            "anova_f": float(f_stat),     # Giá trị thống kê ANOVA
+            "anova_p": anova_p,           # p-value đã clip
+            "anova_p_text": anova_p_text, # Chuỗi mô tả p-value
+            "interpretation": (           # Kết luận
                 "Có khác biệt giữa các năm."
                 if anova_p < 0.05 else
                 "Không có khác biệt đáng kể."
@@ -433,14 +490,21 @@ class ANOVA_ttest:
 
     # ANOVA khối
     def _anova_block(self, block: str) -> dict:
-        """ANOVA điểm khối thi giữa các năm."""
+        """
+        Thực hiện kiểm định ANOVA cho khối thi
+
+        Trả về dict gồm khối, giá trị thống kê anova, giá trị p-value, kết luận
+        """
+        # Lấy dữ liệu gốc
         df = self._data
 
+        # Kiểm tra cột bắt buộc
         required = [self._group_col, self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
+        # Lọc theo khối nếu có cột 'khoi'
         if "khoi" in df.columns:
             df_blk = df[df["khoi"] == block]
             if df_blk.empty:
@@ -448,27 +512,31 @@ class ANOVA_ttest:
         else:
             df_blk = df
 
+        # Gom điểm theo năm cho khối đó
         groups = []
         for _, g in df_blk.groupby(self._group_col):
             arr = np.repeat(
                 g[self._score_col].astype(float),
-                g["so_hoc_sinh"].astype(int)
+                g["so_hoc_sinh"].astype(int)   # Mở rộng theo số học sinh
             )
             if arr.size > 0:
                 groups.append(arr)
 
+        # Nếu có ít hơn 2 năm
         if len(groups) < 2:
             raise ValueError("Không đủ nhóm để chạy ANOVA (>=2 năm).")
 
+        # Tính ANOVA
         f_stat, p_raw = stats.f_oneway(*groups)
         anova_p, anova_p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả
         return {
-            "block": block,
-            "anova_f": float(f_stat),
-            "anova_p": anova_p,
-            "anova_p_text": anova_p_text,
-            "interpretation": (
+            "block": block,               # Tên khối
+            "anova_f": float(f_stat),     # Giá trị thống kê ANOVA
+            "anova_p": anova_p,           # p-value đã clip
+            "anova_p_text": anova_p_text, # Chuỗi mô tả p-value
+            "interpretation": (           # Kết luận
                 "Có khác biệt giữa các năm."
                 if anova_p < 0.05 else
                 "Không có khác biệt đáng kể."
@@ -481,45 +549,57 @@ class ANOVA_ttest:
 
         DataFrame dạng tối thiểu:
             group_col | tinh | score_col | so_hoc_sinh
+
+        Trả về dict gồm năm, số tỉnh, giá trị thống kê anova, giá trị p-value, kết luận
         """
+        # Lấy dữ liệu gốc
         df = self._data
 
+        # Kiểm tra các cột bắt buộc
         required = [self._group_col, "tinh", self._score_col, "so_hoc_sinh"]
         for col in required:
             if col not in df.columns:
                 raise ValueError(f"Thiếu cột '{col}' trong DataFrame.")
 
+        # Lọc dữ liệu theo năm
         df_year = df[df[self._group_col] == year]
         if df_year.empty:
             raise ValueError(f"Không có dữ liệu cho năm {year}.")
 
+        # Lấy danh sách các tỉnh trong năm đó
         provinces = df_year["tinh"].unique()
+
+        # BẮT BUỘC phải có ≥ 3 tỉnh để chạy ANOVA
         if len(provinces) < 3:
             raise ValueError("ANOVA yêu cầu >= 3 tỉnh trong 1 năm. Dùng t-test cho 2 tỉnh.")
 
+        # Tạo nhóm lưu số điểm của học sinh theo từng tỉnh
         groups = []
         for p in provinces:
             df_p = df_year[df_year["tinh"] == p]
             g = np.repeat(
                 df_p[self._score_col].astype(float),
-                df_p["so_hoc_sinh"].astype(int)
+                df_p["so_hoc_sinh"].astype(int)   # Mở rộng theo số học sinh
             )
             if g.size > 0:
                 groups.append(g)
 
+        # Kiểm tra đủ 3 nhóm dữ liệu có điểm
         if len(groups) < 3:
             raise ValueError("Không đủ dữ liệu để chạy ANOVA (cần >= 3 tỉnh có điểm).")
 
+        # Tính ANOVA
         F, p_raw = stats.f_oneway(*groups)
         p_val, p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả
         return {
-            "year": year,
-            "num_provinces": len(groups),
-            "F_statistic": float(F),
-            "p_value": p_val,
-            "p_value_text": p_text,
-            "interpretation": (
+            "year": year,                    # Năm cần kiểm định
+            "num_provinces": len(groups),    # Số tỉnh tham gia kiểm định
+            "F_statistic": float(F),         # Giá trị thống kê ANOVA
+            "p_value": p_val,                # p-value đã clip
+            "p_value_text": p_text,          # Chuỗi mô tả p-value
+            "interpretation": (              # Kết luận
                 "Có khác biệt điểm giữa các tỉnh."
                 if p_val < 0.05 else
                 "Không có khác biệt thống kê giữa các tỉnh."
