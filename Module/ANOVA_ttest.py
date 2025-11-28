@@ -158,9 +158,11 @@ class ANOVA_ttest:
 
         # Xác định hướng kiểm định nếu one-tail
         if alternative == "auto":
-            alternative = "less" if year2 > year1 else "greater"
-
+            alternative = "less" if year2 > year1 else "greater" # Giả định điểm năm sau thấp hơn năm trước.
+            
+        # Tính p-value theo 1 phía nếu muốn tính 1 phía
         if one_tail:
+            # Nếu năm sau thấp hơn năm trước
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
             elif alternative == "greater":
@@ -189,6 +191,7 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict
         return {
             "subject": subject,                       # Tên môn học
             "year1": year1,                           # Năm thứ nhất
@@ -245,21 +248,26 @@ class ANOVA_ttest:
             df_blk[df_blk[self._group_col] == year2]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
 
+        # Kiểm tra môn đó có dữ liệu trong 2 năm không
         if g1.size == 0 or g2.size == 0:
             raise ValueError("Một trong hai năm không có dữ liệu cho khối này.")
 
         t_stat, p_two_tailed = stats.ttest_ind(g1, g2, equal_var=False)
 
+        # Xác định alternative dùng để xác định kiểm định theo 2 phía hay 1 phía
         if alternative == "auto":
-            alternative = "less" if year2 > year1 else "greater"
-
+            alternative = "less" if year2 > year1 else "greater" # Giả định điểm năm sau thấp hơn năm trước.
+            
+        # Tính p-value theo 1 phía nếu muốn tính 1 phía
         if one_tail:
+            # Nếu năm sai thấp hơn năm trước
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
             elif alternative == "greater":
                 p_val_raw = p_two_tailed / 2 if t_stat > 0 else 1 - p_two_tailed / 2
             else:
                 raise ValueError("alternative must be 'less', 'greater', or 'auto'.")
+        # Nếu kiểm định 2 phía
         else:
             p_val_raw = p_two_tailed
 
@@ -280,6 +288,7 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict    
         return {
             "block": block,
             "year1": year1,
@@ -297,7 +306,7 @@ class ANOVA_ttest:
                 "Không có sự khác biệt thống kê."
             ),
         }
-
+                                   
     # 3) T-test 2 tỉnh trong 1 năm
     def _t_test_two_provinces(
         self,
@@ -328,21 +337,27 @@ class ANOVA_ttest:
             df_year[df_year["tinh"] == province2]["so_hoc_sinh"].values.astype(int),
         ).astype(float)
 
+        # Kiểm tra môn đó có dữ liệu trong 2 năm không
         if g1.size == 0 or g2.size == 0:
-            raise ValueError("Một trong hai tỉnh không có dữ liệu trong năm này.")
-
+            raise ValueError("Một trong hai năm không có dữ liệu cho môn này.")
+        
+        # Xác định alternative dùng để xác định kiểm định theo 2 phía hay 1 phía
         if alternative == "auto":
             alternative = "less"  # giả định province2 < province1 (có thể chỉnh tay)
 
+        # Tính t-test
         t_stat, p_two_tailed = stats.ttest_ind(g1, g2, equal_var=False)
-
+            
+        # Tính p-value theo 1 phía nếu muốn tính 1 phía
         if one_tail:
+            # Nếu năm sai thấp hơn năm trước
             if alternative == "less":
                 p_val_raw = p_two_tailed / 2 if t_stat < 0 else 1 - p_two_tailed / 2
             elif alternative == "greater":
                 p_val_raw = p_two_tailed / 2 if t_stat > 0 else 1 - p_two_tailed / 2
             else:
-                raise ValueError("alternative must be 'less' or 'greater'.")
+                raise ValueError("alternative must be 'less', 'greater', or 'auto'.")
+        # Nếu kiểm định 2 phía
         else:
             p_val_raw = p_two_tailed
 
@@ -363,6 +378,7 @@ class ANOVA_ttest:
         else:
             strength = "Mạnh"
 
+        # Trả về kết quả dưới dạng dict    
         return {
             "year": year,
             "province1": province1,
@@ -413,12 +429,13 @@ class ANOVA_ttest:
             if arr.size > 0:
                 groups.append(arr)
 
-        if len(groups) < 2:
+        if len(groups) < 2: # Nếu có ít hơn 2 năm
             raise ValueError("Không đủ nhóm để chạy ANOVA (>=2 năm).")
 
         f_stat, p_raw = stats.f_oneway(*groups)
         anova_p, anova_p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả dưới dạng dict
         return {
             "subject": subject,
             "anova_f": float(f_stat),
@@ -457,12 +474,14 @@ class ANOVA_ttest:
             if arr.size > 0:
                 groups.append(arr)
 
+        # Nếu có ít hơn 2 năm
         if len(groups) < 2:
             raise ValueError("Không đủ nhóm để chạy ANOVA (>=2 năm).")
 
         f_stat, p_raw = stats.f_oneway(*groups)
         anova_p, anova_p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả dưới dạng dict
         return {
             "block": block,
             "anova_f": float(f_stat),
@@ -495,8 +514,9 @@ class ANOVA_ttest:
 
         provinces = df_year["tinh"].unique()
         if len(provinces) < 3:
-            raise ValueError("ANOVA yêu cầu >= 3 tỉnh trong 1 năm. Dùng t-test cho 2 tỉnh.")
-
+            raise ValueError("Không đủ nhóm để chạy ANOVA (>=2 năm).")
+        
+        # Tạo nhóm lưu số điểm của học sinh theo tỉnh
         groups = []
         for p in provinces:
             df_p = df_year[df_year["tinh"] == p]
@@ -513,6 +533,7 @@ class ANOVA_ttest:
         F, p_raw = stats.f_oneway(*groups)
         p_val, p_text = self._clip_p_value(p_raw)
 
+        # Trả về kết quả dưới dạng dict
         return {
             "year": year,
             "num_provinces": len(groups),
