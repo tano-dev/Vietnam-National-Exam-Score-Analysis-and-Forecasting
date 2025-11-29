@@ -363,3 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 .venv/
+/myenv
+/venv
+/.venv
+/.vscode
