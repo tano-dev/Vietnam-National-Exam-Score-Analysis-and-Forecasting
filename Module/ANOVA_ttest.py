@@ -326,7 +326,7 @@ class ANOVA_ttest:
                 "Không có sự khác biệt thống kê."
             ),
         }
-
+                                   
     # 3) T-test 2 tỉnh trong 1 năm
     def _t_test_two_provinces(
         self,
