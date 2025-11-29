@@ -99,10 +99,7 @@ class Analysis:
         return df[subject].value_counts().sort_index()
     
     # ===== CÁC HÀM NHÓM PHÂN TÍCH DỮ LIỆU 
-    # #Phân tích thống kê điểm theo môn học.
-    # Requirements: Trả về DataFrame thống kê điểm theo môn học
-    # def _aggregate_by_exam_subsections(self, block: str) -> pd.DataFrame:
-    # Your Code start here
+    # Phân tích thống kê điểm theo môn học.
     def _aggregate_by_exam_subsections(self, subject: str) -> pd.DataFrame:
         """
         Trả về DataFrame phân phối điểm theo môn học và theo từng năm.
@@ -159,14 +156,7 @@ class Analysis:
         result = pd.DataFrame(records)
         return result.sort_values(["nam_hoc", "mon_hoc", "diem"]).reset_index(drop=True)
     
-
-    # Your Code end here 
-    
-    
-    # # Phân tích điểm theo khối thi cụ thể
-    # Requiremnts: Trả về DataFrame phân tích điểm theo khối thi sau khi được nhóm. Có xây dựng map khối thi -> cột điểm
-    # def _analyze_scores_by_exam_block(self, block: str) -> pd.Data
-    # Your Code start here
+    # Phân tích điểm theo khối thi cụ thể
     def _analyze_scores_by_exam_block(self, block: str) -> pd.DataFrame:
         """
         Trả về phân phối tổng điểm theo khối thi và từng năm.
@@ -314,27 +304,33 @@ class Analysis:
         return out[['khoi', 'nam_hoc', 'tong_diem', 'so_hoc_sinh']] \
                 .sort_values(['khoi', 'nam_hoc', 'tong_diem'])
     
-    
-
-    # Your Code end here
-    
-    # # Phân tích so sánh điểm theo tỉnh thành.
-    # Requirements: Trả về DataFrame so sánh điểm theo tỉnh thành. Xây dựng map tỉnh thành ( sau đợt chuyển đổi, dùng cho dự báo 2026) -> cột điểm
-    # def _compare_by_region(self, region: str) -> pd.DataFrame:
-    # Your Code start here
+    # Phân tích so sánh điểm theo tỉnh thành.
     def _compare_by_region(self, region: str) -> pd.DataFrame:
         """
         Phân phối tổng điểm theo tỉnh và theo từng năm.
-        
-        Parameters:
-            region: Tên tỉnh cụ thể để phân tích hoặc "ALL" để phân tích tất cả tỉnh.
-        
-        Returns:
-            DataFrame với cột ['nam_hoc', 'tinh', 'tong_diem', 'so_hoc_sinh']
+
+        Parameters
+        ----------
+        region : str
+            - Tên tỉnh cụ thể để phân tích (ví dụ: "Hà Nội", "Thành phố Hồ Chí Minh").
+            - "ALL" → phân tích tất cả tỉnh.
+
+        Returns
+        -------
+        pd.DataFrame
+            Các cột: ['nam_hoc', 'tinh', 'tong_diem', 'so_hoc_sinh']
+
+        Ghi chú
+        -------
+        - Ở đây sử dụng map tỉnh trước khi thay đổi mã (pre_region_map),
+          tức mỗi mã 01..64 tương ứng 1 tỉnh duy nhất.
+        - region_map_raw (sau đợt chuyển đổi, gộp tỉnh) có thể dùng riêng
+          cho bài dự báo 2026 nhưng KHÔNG dùng trong hàm này để đảm bảo
+          export đúng “tỉnh trước khi có sự thay đổi”.
         """
         df = self.processor.get_processed_data()
         
-        # Map tỉnh trước chuyển đổi
+        # Map tỉnh trước chuyển đổi: 01..64, mỗi mã 1 tỉnh
         pre_region_map = {
             "Hà Nội": ["01"],
             "Thành phố Hồ Chí Minh": ["02"],
@@ -401,7 +397,7 @@ class Analysis:
             "Hậu Giang": ["64"]
         }
         
-        # Map tỉnh theo nhiều mã sau đợt chuyển đổi
+        # Map tỉnh theo nhiều mã sau đợt chuyển đổi (để dành cho bài toán khác)
         region_map_raw = {
             "Hà Nội": ["01"],
             "Thành phố Hồ Chí Minh": ["02", "44", "52"],
@@ -440,12 +436,17 @@ class Analysis:
             "Cà Mau": ["60", "61"]
         }
 
-        # Chuyển mã → tỉnh
-        code_to_region = {code: region_name for region_name, codes in region_map_raw.items() for code in codes}
+        # Chuyển mã → tỉnh theo hệ cũ (pre_region_map)
+        code_to_region = {
+            code: region_name
+            for region_name, codes in pre_region_map.items()
+            for code in codes
+        }
 
         # Chuẩn hóa SBD
         if 'sbd' not in df.columns:
             raise ValueError("Thiếu cột 'sbd'.")
+        df = df.copy()
         df['sbd'] = df['sbd'].astype(str).str.zfill(8)
         df['ma_tinh'] = df['sbd'].str[:2]       
         df['tinh'] = df['ma_tinh'].map(code_to_region)
@@ -453,8 +454,8 @@ class Analysis:
 
         # Lọc theo tỉnh nếu user chỉ định
         if region != "ALL":
-            if region not in region_map_raw:
-                raise ValueError(f"Tỉnh '{region}' không hợp lệ.")
+            if region not in pre_region_map:
+                raise ValueError(f"Tỉnh '{region}' không hợp lệ (không có trong pre_region_map).")
             df = df[df['tinh'] == region]
 
         # Danh sách môn học
@@ -465,6 +466,9 @@ class Analysis:
             'cn_cong_nghiep', 'cn_nong_nghiep'
         ]
         score_cols = [c for c in mon_hoc if c in df.columns]
+
+        if not score_cols:
+            raise ValueError("Không tìm thấy cột điểm nào trong DataFrame.")
 
         # Xác định ai có ít nhất 1 môn có điểm
         df = df[df[score_cols].notna().any(axis=1)]
@@ -483,15 +487,7 @@ class Analysis:
 
         return counts
     
-
-# Your Code end here
-    
-    
     # ===== CÁC HÀM THỐNG KÊ DỮ LIỆU    
-    # # def _get_statistics_by_subject(self, subject: str) -> dict:
-    # # Requirements: Trả về dict thống kê điểm theo môn học( khối thi , tỉnh thành ), gồm: mean, median, mode, std, min, max
-    # #     """Lấy thống kê điểm theo môn học."""
-    # Your Code start here
     def _get_statistics_by_subject(self, subject: str) -> dict:
         """
         Trả về dict thống kê điểm theo môn học cho tất cả năm.
@@ -501,15 +497,11 @@ class Analysis:
             - Lấy từ _aggregate_by_exam_subsections(subject)
             - DF có các cột: ['nam_hoc', 'mon_hoc', 'diem', 'so_hoc_sinh']
         """
-
-        # Lấy DataFrame phân phối điểm theo môn học (đã gộp theo năm)
         df = self._aggregate_by_exam_subsections(subject)
 
         stats_dict: dict[int, dict] = {}
 
         for year, df_year in df.groupby("nam_hoc"):
-            # Với subject != "All" thì df_year chỉ chứa 1 môn;
-            # Nếu sau này dùng "All" thì df_year có nhiều môn → cộng chung.
             scores = df_year.loc[df_year.index.repeat(df_year["so_hoc_sinh"]), "diem"]
 
             if scores.empty:
@@ -535,26 +527,16 @@ class Analysis:
 
         return stats_dict
 
-    
-    # Your Code end here
-    
-    # # def _get_statistics_by_block(self, block: str) -> dict:
-    # # Requirements: Trả về dict thống kê điểm theo khối thi, gồm: mean, median, mode, std, min, max
-    # #     """ Lấy thống kê điểm theo khối thi. """
-    # Your code start here
     def _get_statistics_by_block(self, block: str) -> dict:
         """
         Trả về dict thống kê điểm theo khối thi cho tất cả năm.
         key: nam_hoc, value: dict thống kê (mean, median, mode, std, min, max)
         """
-
-        # Lấy DataFrame phân phối tổng điểm theo khối
         df = self.analyze_scores_by_exam_block(block)
 
         stats_dict = {}
 
         for year, df_year in df.groupby("nam_hoc"):
-            # Mở rộng tổng điểm theo số học sinh
             scores = df_year.loc[df_year.index.repeat(df_year["so_hoc_sinh"]), "tong_diem"]
 
             if scores.empty:
@@ -580,29 +562,18 @@ class Analysis:
 
         return stats_dict
 
-    
-    # Your code end here
-
-    
-    # # def _get_statistics_by_region(self, region: str) -> dict:
-    # # Requirements: Trả về dict thống kê điểm theo tỉnh thành, gồm: mean, median, mode, std, min, max
-    # #     """ Lấy thống kê điểm theo tỉnh thành. """
-    # Your code start here
     def _get_statistics_by_region(self, region: str) -> dict:
         """
         Trả về dict thống kê điểm cho một tỉnh.
         Kết quả: {nam_hoc: {mean, median, mode, std, min, max}}
         """
-        # Lấy DataFrame phân phối tổng điểm theo tỉnh
         df = self.compare_by_region(region)
 
         stats_dict = {}
 
         for year, df_year in df.groupby("nam_hoc"):
-            # Lấy dữ liệu của tỉnh đã chọn 
             df_prov = df_year[df_year["tinh"] == region]
 
-            # Mở rộng điểm theo số học sinh
             scores = df_prov.loc[df_prov.index.repeat(df_prov["so_hoc_sinh"]), "tong_diem"]
 
             if scores.empty:
@@ -628,10 +599,6 @@ class Analysis:
 
         return stats_dict
         
-  
-    # Your code end here
-
-    
     # ======================== PUBLIC METHODS: PHÂN TÍCH DỮ LIỆU =========================
     # ----------------------- Các hàm phân tích dữ liệu -------------------------
     def get_score_distribution(self, subject: str) -> pd.Series:
