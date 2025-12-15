@@ -1,0 +1,81 @@
+
+# =====================================================================================================
+# Tuần tự thực hiện:  10–17/11/2025
+# Problem: Trong quá trình tiền xử lý dữ liệu, bây h chúng ta cần phải chuẩn hóa tên cột cho thống nhất để sử dụng cho đường dài:
+- Trong đó:
+Data 2023 có các cột: sbd,toan,ngu_van,ngoai_ngu,vat_li,hoa_hoc,sinh_hoc,lich_su,dia_li,gdcd,ma_ngoai_ngu
+Data 2024 có các cột: sbd,toan,ngu_van,ngoai_ngu,vat_li,hoa_hoc,sinh_hoc,lich_su,dia_li,gdcd,ma_ngoai_ngu
+Data 2025 có các cột:
+Theo chương trình cũ: STT, SOBAODANH, Toán, Văn, Lí, Hóa, Sinh, Sử, Địa, Giáo dục công dân, Ngoại ngữ, Mã môn ngoại ngữ
+Theo chương trình mới: STT, SOBAODANH, Toán, Văn, Lí, Hóa, Sinh, Tin học, Công nghệ công nghiệp, Công nghệ nông nghiệp, Sử, Địa, Giáo dục kinh tế và pháp luật, Ngoại ngữ, Mã môn ngoại ngữ
+Vấn đề đặt ra: 
+Nên chuẩn hóa tên cột theo dạng đơn như 2023,2024 hay là theo dạng của 2025 , trong trường hợp năm 2025 thì nên xử lý như nào vơis stt và sbd, trong khi stt chỉ là đánh dấu, còn sobaodanh vẫn giữ nguyên như 2 năm cũ
+- Solution:
+Dùng map để ánh xạ tên cột -> sau đó chuẩn hóa về 1 dạng tên cột nhất định để sử dụng
+Dùng set với STT và SOBAODANH ở năm 2025
+Thêm cột vào data frame 2023, 2024 với các môn đã được thêm ở năm 2025
+
+# ========================================
+# Quy trình Git hằng ngày
+
+Cấu trúc nhánh (ví dụ):
+
+- Nhánh chính: `<MAIN_BRANCH>` – thường là `master` hoặc `main`
+- Nhánh cá nhân: `<FEATURE_BRANCH>` – ví dụ: `Duy`, `dev`, `feature/eda`, ...
+
+> Khi dùng thực tế, thay:
+> - `<PATH_TO_REPO>`  → đường dẫn thư mục project  
+> - `<MAIN_BRANCH>`   → `master` (hoặc `main`)  
+> - `<FEATURE_BRANCH>`→ `Duy` (hoặc nhánh cá nhân khác)
+
+---
+
+## 🌞 KHUNG 1 – TẢI TỪ GITHUB (NHÁNH CHÍNH) VỀ NHÁNH CÁ NHÂN  
+> Dùng **đầu ngày** hoặc trước khi bắt đầu một phần việc mới.
+
+```bash
+cd "<PATH_TO_REPO>"
+
+git status
+# Nếu QUYẾT ĐỊNH bỏ hết mọi thay đổi local chưa commit:
+# git reset --hard
+
+# 1. Cập nhật nhánh chính từ GitHub
+git checkout <MAIN_BRANCH>
+git pull origin <MAIN_BRANCH>
+
+# 2. Cập nhật nhánh cá nhân từ nhánh chính
+git checkout <FEATURE_BRANCH>
+git merge <MAIN_BRANCH>
+
+# Nếu có conflict:
+#   - Mở file bị conflict, sửa lại theo ý muốn
+#   - Rồi chạy:
+# git add .
+# git commit -m "Merge <MAIN_BRANCH> into <FEATURE_BRANCH>"
+
+git status
+# >>> Từ đây bắt đầu code trên nhánh <FEATURE_BRANCH>
+
+cd "<PATH_TO_REPO>"
+
+# Đảm bảo đang ở nhánh cá nhân
+git checkout <FEATURE_BRANCH>
+git status
+
+#### 🌙 KHUNG 2 – ĐẨY TỪ NHÁNH CÁ NHÂN LÊN GITHUB & MERGE VỀ NHÁNH CHÍNH
+# 1. Lưu lại toàn bộ thay đổi trong ngày
+git add .
+git commit -m "Cập nhật code trong ngày"
+
+# 2. Đẩy nhánh cá nhân lên GitHub
+git push origin <FEATURE_BRANCH>
+
+# 3. Lên GitHub:
+#    - Mở repo → tab "Pull requests" → "New pull request"
+#    - base   = <MAIN_BRANCH>
+#    - compare= <FEATURE_BRANCH>
+#    - Kiểm tra diff, viết mô tả → tạo PR
+#    - Review xong → Merge pull request (<FEATURE_BRANCH> → <MAIN_BRANCH>)
+
+# (Lần code tiếp theo: quay lại dùng lại KHUNG 1)
