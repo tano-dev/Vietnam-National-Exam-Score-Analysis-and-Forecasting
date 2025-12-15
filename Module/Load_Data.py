@@ -122,9 +122,129 @@ class DataLoader:
         
         # trả về 4 DataFrame
         return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018  
+    
+    # =============================================================================
+# LỚP CleanDataLoader: Load dữ liệu CLEAN 2023–2025 (Block/Subject/Province)
+# =============================================================================
+class CleanDataLoader(DataLoader):
+    """Quản lý việc load dữ liệu CLEAN phục vụ EDA, Change Point, Forecast,...
 
+    Attributes (public API)
+    -----------------------
+    clean_dataset_root : Path
+        Thư mục gốc chứa toàn bộ Clean_Data_2023-2025.
+    """
 
-    # ==================== PUBLIC METHODS: XỬ LÝ DỮ LIỆU =====================
+    # Chỉ khai báo các thuộc tính MỚI so với DataLoader để tránh trùng slots.
+    __slots__ = (
+        "_dataset_dir",              # tên thư mục chứa dữ liệu CLEAN (ghi đè Raw_Data)
+        "_block_data_dir",           # thư mục Block Data
+        "_subject_data_dir",         # thư mục Subject Data
+        "_province_data_dir",        # thư mục Province Data
+
+        # Tiền tố thư mục: CleanData_<ten_khoi/mon/tinh>
+        "_block_data_f_prefix",      # "CleanData"
+        "_subject_data_f_prefix",    # "CleanData"
+        "_province_data_f_prefix",   # "CleanData"
+
+        # Tên file dữ liệu: Export_Analysis_<ten>.csv
+        "_f_block_data_prefix",      # "Export_Analysis"
+        "_f_subject_data_prefix",    # "Export_Analysis"
+        "_f_province_data_prefix",   # "Export_Analysis"
+
+        # Tên file dữ liệu: Export_Distribution_<ten>.csv
+        "_d_block_data_prefix",      # "Export_Distribution"
+        "_d_subject_data_prefix",    # "Export_Distribution"
+        "_d_province_data_prefix",   # "Export_Distribution"
+    )
+
+    # ==================== Khởi tạo ====================
+    def __init__(self, project_root: Path | str | None = None) -> None:
+        """Khởi tạo CleanDataLoader."""
+        # Gọi init của lớp cha để setup project_root
+        super().__init__(project_root)
+
+        # Ghi đè tên thư mục dữ liệu thành thư mục Clean
+        self._dataset_dir = "Clean_Data_2023-2025"
+
+        # Thư mục con
+        self._block_data_dir = "Block_Data"
+        self._subject_data_dir = "Subject_Data"
+        self._province_data_dir = "Province_Data"
+
+        # Tiền tố thư mục
+        self._block_data_f_prefix = "CleanData"
+        self._subject_data_f_prefix = "CleanData"
+        self._province_data_f_prefix = "CleanData"
+
+        # Tên file dữ liệu Analysis
+        self._f_block_data_prefix = "Export_Analysis"
+        self._f_subject_data_prefix = "Export_Analysis"
+        self._f_province_data_prefix = "Export_Analysis"
+
+        # Tên file dữ liệu Distribution
+        self._d_block_data_prefix = "Export_Distribution"
+        self._d_subject_data_prefix = "Export_Distribution"
+        self._d_province_data_prefix = "Export_Distribution"
+
+    # ==================== Getter ====================
+    @property
+    def clean_dataset_root(self) -> Path:
+        """Thư mục gốc chứa toàn bộ Clean_Data_2023-2025."""
+        return self.project_root / self._dataset_dir
+
+    # ==================== INTERNAL PRIVATE METHODS ====================
+    def _build_path(self, level: str, name: str, kind: str = "analysis") -> Path:
+        """Tạo đường dẫn đầy đủ tới file Clean Data."""
+        name = str(name).strip()
+
+        # Bản đồ cấp dữ liệu tới thư mục con và tiền tố file
+        level_map = {
+            "block": (
+                self._block_data_dir,
+                self._block_data_f_prefix,
+                self._f_block_data_prefix if kind == "analysis" else self._d_block_data_prefix,
+            ),
+            "subject": (
+                self._subject_data_dir,
+                self._subject_data_f_prefix,
+                self._f_subject_data_prefix if kind == "analysis" else self._d_subject_data_prefix,
+            ),
+            "province": (
+                self._province_data_dir,
+                self._province_data_f_prefix,
+                self._f_province_data_prefix if kind == "analysis" else self._d_province_data_prefix,
+            ),
+        }
+
+        if level not in level_map:
+            raise ValueError("level phải là 'block', 'subject' hoặc 'province'")
+
+        sub_dir, clean_prefix, file_prefix = level_map[level]
+        folder_name = f"{clean_prefix}_{name}"
+        file_name = f"{file_prefix}_{name}.csv"
+
+        return self.clean_dataset_root / sub_dir / folder_name / file_name
+
+    # ==================== PUBLIC METHODS ====================
+    def get_subject_data(self, subject: str, kind: str = "analysis") -> pd.DataFrame:
+        path = self._build_path("subject", subject, kind)
+        if not path.exists():
+            raise FileNotFoundError(f"Không tìm thấy file: {path}")
+        return pd.read_csv(path)
+
+    def get_block_data(self, block: str, kind: str = "analysis") -> pd.DataFrame:
+        path = self._build_path("block", block, kind)
+        if not path.exists():
+            raise FileNotFoundError(f"Không tìm thấy file: {path}")
+        return pd.read_csv(path)
+
+    def get_province_data(self, province: str, kind: str = "analysis") -> pd.DataFrame:
+        path = self._build_path("province", province, kind)
+        if not path.exists():
+            raise FileNotFoundError(f"Không tìm thấy file: {path}")
+        return pd.read_csv(path)
+
     def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Load tất cả dữ liệu từ các file và trả về dưới dạng tuple.
         
