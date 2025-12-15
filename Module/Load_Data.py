@@ -38,7 +38,7 @@ class DataLoader:
         self._project_root: Path = Path(project_root) if project_root else default_root
 
         # tên thư mục/file chuẩn hóa để dễ đổi nếu cần
-        self._dataset_dir = "Data"
+        self._dataset_dir = "Raw_Data"
         
         self._set2023 = "Data_Set_2023"
         self._set2024 = "Data_Set_2024"
@@ -48,7 +48,6 @@ class DataLoader:
         self._f_2024_ct2006 = "diem_thi_thpt_2024.csv"
         self._f_2025_ct2006 = "diem_thi_thpt_2025-ct2006.xlsx"
         self._f_2025_ct2018 = "diem_thi_thpt_2025-ct2018a.xlsx"
-
     # -------- Getter/Setter kiểu Python cho cấu hình --------
     @property
     def project_root(self) -> Path:
@@ -113,14 +112,18 @@ class DataLoader:
         df_2025_ct2006 = pd.read_excel(
             self.thpt2025_ct2006_xlsx_path, engine="openpyxl"
         )
-        df_2025_ct2018 = pd.read_excel(
-            self.thpt2025_ct2018_xlsx_path, engine="openpyxl"
+        df_2025_ct2018_s1 = pd.read_excel(
+            self.thpt2025_ct2018_xlsx_path, engine="openpyxl", sheet_name="Sheet1"
         )
-
+        df_2025_ct2018_s2 = pd.read_excel(
+            self.thpt2025_ct2018_xlsx_path, engine="openpyxl", sheet_name="Sheet2"
+        )
+        df_2025_ct2018 = pd.concat([df_2025_ct2018_s1, df_2025_ct2018_s2], ignore_index=True)
+        
         # trả về 4 DataFrame
-        return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018
+        return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018  
 
-    
+
     # ==================== PUBLIC METHODS: XỬ LÝ DỮ LIỆU =====================
     def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Load tất cả dữ liệu từ các file và trả về dưới dạng tuple.

@@ -200,10 +200,17 @@ class DataProcessor:
     def _preprocess_data(self) -> None:
         """Tiền xử lý dữ liệu (ví dụ: xử lý giá trị thiếu, chuẩn hóa)."""
         # Loại bỏ hàng có giá trị thiếu
-        self.data_2023.dropna(how='all', inplace=True)
-        self.data_2024.dropna(how='all', inplace=True)
-        self.data_2025_ct2006.dropna(how='all', inplace=True)
-        self.data_2025_ct2018.dropna(how='all', inplace=True)
+        cols_keep = ["sbd", "ma_ngoai_ngu", "nam_hoc"]
+
+        for df in [self.data_2023, self.data_2024, self.data_2025_ct2006, self.data_2025_ct2018]:
+            cols_check = [c for c in df.columns if c not in cols_keep]
+            df.dropna(subset=cols_check, how="all", inplace=True)
+
+        # Loại bỏ các hàng trùng lặp dựa trên cột 'SOBAODANH'
+        self.data_2023.drop_duplicates(keep='first', inplace=True)
+        self.data_2024.drop_duplicates(keep='first', inplace=True)
+        self.data_2025_ct2006.drop_duplicates(keep='first', inplace=True)
+        self.data_2025_ct2018.drop_duplicates(keep='first', inplace=True)
     
     # Chuẩn hóa tên cột và cấu trúc các cột dữ liệu 
     def _normalize_columns(self) -> None:
@@ -330,8 +337,8 @@ class DataProcessor:
     # ------- Xây dựng hàm để thực hiện toàn bộ quy trình xử lý --------
     def process_all(self) -> None:
         """Thực hiện toàn bộ quy trình xử lý dữ liệu."""
-        self._preprocess_data()
         self._normalize_columns()
+        self._preprocess_data()
         self._build_combined_data()
         self._validate_data()
     
