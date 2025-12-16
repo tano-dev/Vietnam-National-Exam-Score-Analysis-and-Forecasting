@@ -1,3 +1,4 @@
+from xml.parsers.expat import model
 import pandas as pd
 import numpy as np
 import ruptures as rpt
@@ -59,7 +60,7 @@ class ChangePointDetector:
     # ---------------------------------------------------------
     # 1. Ruptures Methods
     # ---------------------------------------------------------
-    def detect_ruptures(self, method="pelt", model="l2", pen=10, width=3, n_bkps=5):
+    def detect_ruptures(self, method="pelt", model="l2", pen=1, width=3, n_bkps=5):
         """
         Áp dụng các thuật toán từ thư viện Ruptures.
         :param method: 'pelt', 'binseg', 'window'
