@@ -1,3 +1,4 @@
+from xml.parsers.expat import model
 import pandas as pd
 import numpy as np
 import ruptures as rpt
@@ -59,7 +60,7 @@ class ChangePointDetector:
     # ---------------------------------------------------------
     # 1. Ruptures Methods
     # ---------------------------------------------------------
-    def detect_ruptures(self, method="pelt", model="l2", pen=10, width=3, n_bkps=5):
+    def detect_ruptures(self, method="pelt", model="l2", pen=1, width=3, n_bkps=5):
         """
         Áp dụng các thuật toán từ thư viện Ruptures.
         :param method: 'pelt', 'binseg', 'window'
@@ -81,9 +82,14 @@ class ChangePointDetector:
                 # Chọn thuật toán
                 if method == "pelt":
                     algo = rpt.Pelt(model=model).fit(signal)
-                    bkps = algo.predict(pen=pen)
+                    # Lưu ý: min_size=1 có nghĩa là chấp nhận 1 năm đứng riêng lẻ thành 1 giai đoạn
+                    bkps = algo.predict(pen=pen, min_size=1)
                 elif method == "binseg":
                     algo = rpt.Binseg(model=model).fit(signal)
+                    # Binseg không nhận min_size ở predict mà nhận ở fit hoặc mặc định
+                    # Tuy nhiên với binseg, n_bkps=1 có thể chạy được nếu data >= min_size*2
+                    # Với data=3, Binseg cũng sẽ fail nếu min_size mặc định là 2.
+                    # Nên dùng Pelt với min_size=1 là an toàn nhất cho data ngắn.
                     bkps = algo.predict(n_bkps=n_bkps)
                 elif method == "window":
                     algo = rpt.Window(width=width, model=model).fit(signal)
