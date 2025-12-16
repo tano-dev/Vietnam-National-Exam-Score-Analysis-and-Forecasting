@@ -144,7 +144,7 @@ class DataLoader:
         df_2025_ct2018_s2 = pd.read_excel(
             self.thpt2025_ct2018_xlsx_path, engine="openpyxl", sheet_name="Sheet2"
         )
- Nghi
+ 
         df_2025_ct2018 = pd.concat([df_2025_ct2018_s1, df_2025_ct2018_s2], ignore_index=True)
         
         # trả về 4 DataFrame
@@ -272,7 +272,7 @@ class CleanDataLoader(DataLoader):
             raise FileNotFoundError(f"Không tìm thấy file: {path}")
         return pd.read_csv(path)
 
-=======
+
         df_2025_ct2018 = pd.concat(
             [df_2025_ct2018_s1, df_2025_ct2018_s2], ignore_index=True
         )
@@ -280,7 +280,7 @@ class CleanDataLoader(DataLoader):
         return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018
 
     # ==================== PUBLIC METHODS ====================
- master
+
     def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Load tất cả dữ liệu RAW và trả về dưới dạng tuple.
 
