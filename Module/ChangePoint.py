@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
-
-
 # Lưu ý: Class này sẽ hoạt động khi được gọi từ Notebook đã setup đường dẫn
 # Nên ta vẫn import từ 'Module' bình thường.
 try:
