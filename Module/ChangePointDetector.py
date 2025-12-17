@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import ruptures as rpt
 
+
 class ChangePointDetector:
     """
     Class phát hiện điểm gãy (Change Point Detection) trên chuỗi thời gian.
@@ -83,7 +84,8 @@ class ChangePointDetector:
                     "algorithm": f"Ruptures_{method}_{model}",
                     "detected_years": detected_years,
                     "hit_target": hit,
-                    "hit_year": hit_year
+                    "hit_year": hit_year,
+                    "breakpoints": bkps # Lưu index
                 })
 
             except Exception as e:
@@ -139,22 +141,125 @@ class ChangePointDetector:
             })
             
         return pd.DataFrame(results)
-
+    
     # -------------------------------------------------------------------------
-    # 3. TỔNG HỢP & PHÂN TÍCH
+    # 3. Bayesian Change Point Detection (Đã vá lỗi scipy.misc)
+    # -------------------------------------------------------------------------
+    def detect_bayesian(self, probability_threshold=0.01):
+        """
+        Phát hiện điểm gãy bằng phương pháp Bayesian (Offline).
+        """
+        
+        import scipy.misc
+        import scipy.special
+
+        if not hasattr(scipy.misc, 'comb'):
+            scipy.misc.comb = scipy.special.comb
+
+        if not hasattr(scipy.misc, 'logsumexp'):
+            scipy.misc.logsumexp = scipy.special.logsumexp
+
+
+
+        try:
+            import bayesian_changepoint_detection.offline_changepoint_detection as offcd
+            from functools import partial
+        except ImportError as e:
+            print(f"Lỗi Import thư viện: {e}")
+            return pd.DataFrame()
+
+        results = []
+        series_ids = self.data['series_id'].unique()
+
+        print(f"▶️ Đang chạy Bayesian Detection cho {len(series_ids)} chuỗi dữ liệu...")
+
+        for sid in series_ids:
+            signal, years = self._get_series(sid)
+            
+            if signal is None or len(signal) < 3:
+                continue
+
+            try:
+                data_array = np.array(signal)
+
+                # Cấu hình thuật toán
+                # Prior lambda càng lớn thì thuật toán càng ít nhạy (ít báo gãy linh tinh)
+                prior_function = partial(offcd.const_prior, l=(len(data_array) + 1))
+                observation_likelihood_function = offcd.gaussian_obs_log_likelihood
+                
+                # Chạy thuật toán
+                Q, P, Pcp = offcd.offline_changepoint_detection(
+                    data_array, 
+                    prior_function, 
+                    observation_likelihood_function, 
+                    truncate=-40
+                )
+
+                # Tính xác suất (Pcp trả về log-probability)
+                probs = np.exp(Pcp[0, :])
+                
+                # --- SỬA ĐOẠN NÀY ---
+                # Chỉ xóa biên nếu dữ liệu đủ dài (trên 5 năm)
+                if len(probs) >= 5:
+                    probs[0] = 0
+                    probs[-1] = 0
+                
+                # Nếu dữ liệu quá ngắn (3-4 năm), ta giữ nguyên hoặc chỉ xóa index 0
+                elif len(probs) > 1:
+                    probs[0] = 0 # Chỉ xóa năm đầu tiên vì không thể gãy ngay khi bắt đầu
+                # --------------------
+
+                # Debug xem sau khi sửa có lên số không
+                max_prob = np.max(probs) if len(probs) > 0 else 0
+                print(f"DEBUG {sid}: Max Probs = {max_prob:.4f}")
+                ## thêm giá trị xác suất vào kết quả nếu cần
+                
+
+                change_point_indices = np.where(probs > probability_threshold)[0]
+                
+                detected_years = []
+                last_idx = -999
+                for idx in change_point_indices:
+                    if idx < len(years):
+                        # Lọc trùng lặp các năm sát nhau
+                        if idx - last_idx > 1: 
+                            detected_years.append(int(years[idx]))
+                            last_idx = idx
+
+                # Kiểm tra xem có trúng mục tiêu (2025) hay không
+                hit = any(abs(y - self.target_year) <= self.tolerance for y in detected_years)
+                hit_year = next((y for y in detected_years if abs(y - self.target_year) <= self.tolerance), None)
+
+                results.append({
+                    "series_id": sid,
+                    "algorithm": "Bayesian_Offline",
+                    "detected_years": detected_years,
+                    "hit_target": hit,
+                    "hit_year": hit_year,
+                    "probs": probs # Có thể bỏ comment nếu muốn lưu xác suất
+                })
+
+            except Exception as e:
+                print(f"⚠️ Lỗi xử lý Bayesian tại {sid}: {e}")
+                continue
+
+        return pd.DataFrame(results)
+    # -------------------------------------------------------------------------
+    # 4. TỔNG HỢP & PHÂN TÍCH
     # -------------------------------------------------------------------------
     def analyze_all(self):
         """Chạy cả PELT và CUSUM, tổng hợp kết quả."""
         df_pelt = self.detect_ruptures(method="pelt", pen=1) # Pen nhỏ cho chuỗi ngắn
         df_cusum = self.detect_cusum()
+        df_bayes = self.detect_bayesian(probability_threshold=0.01)
         
         # Gộp kết quả
-        final_df = pd.concat([df_pelt, df_cusum], ignore_index=True)
+        final_df = pd.concat([df_pelt, df_cusum, df_bayes], ignore_index=True)
         self.results = final_df
         return final_df
 
     # -------------------------------------------------------------------------
-    # 4. TRỰC QUAN HÓA (VISUALIZATION)
+    # 5. TRỰC QUAN HÓA (VISUALIZATION)
     # -------------------------------------------------------------------------
     def plot_enhanced(self, series_id, detected_years):
         """
