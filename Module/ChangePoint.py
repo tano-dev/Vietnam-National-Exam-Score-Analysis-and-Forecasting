@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
-
-
 # Lưu ý: Class này sẽ hoạt động khi được gọi từ Notebook đã setup đường dẫn
 # Nên ta vẫn import từ 'Module' bình thường.
 try:
@@ -72,3 +69,4 @@ class ChangePointPreparer:
             except Exception:
                 continue
         return pd.concat(results, ignore_index=True) if results else pd.DataFrame(columns=["year", "series_id", "value"])
+
