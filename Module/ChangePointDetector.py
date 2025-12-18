@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import ruptures as rpt
 
+
 class ChangePointDetector:
     """
     Class phát hiện điểm gãy (Change Point Detection) trên chuỗi thời gian.
@@ -83,7 +84,8 @@ class ChangePointDetector:
                     "algorithm": f"Ruptures_{method}_{model}",
                     "detected_years": detected_years,
                     "hit_target": hit,
-                    "hit_year": hit_year
+                    "hit_year": hit_year,
+                    "breakpoints": bkps # Lưu index
                 })
 
             except Exception as e:
@@ -139,22 +141,158 @@ class ChangePointDetector:
             })
             
         return pd.DataFrame(results)
-
+    
     # -------------------------------------------------------------------------
-    # 3. TỔNG HỢP & PHÂN TÍCH
+    # 3. Bayesian Change Point Detection (Đã vá lỗi scipy.misc)
+    # -------------------------------------------------------------------------
+    def detect_bayesian(self, probability_threshold=0.01):
+        """
+        Phát hiện điểm gãy bằng phương pháp Bayesian (Offline).
+        """
+        
+        import scipy.misc
+        import scipy.special
+
+        if not hasattr(scipy.misc, 'comb'):
+            scipy.misc.comb = scipy.special.comb
+
+        if not hasattr(scipy.misc, 'logsumexp'):
+            scipy.misc.logsumexp = scipy.special.logsumexp
+
+
+
+        try:
+            import bayesian_changepoint_detection.offline_changepoint_detection as offcd
+            from functools import partial
+        except ImportError as e:
+            print(f"Lỗi Import thư viện: {e}")
+            return pd.DataFrame()
+
+        results = []
+        series_ids = self.data['series_id'].unique()
+
+        print(f"▶️ Đang chạy Bayesian Detection cho {len(series_ids)} chuỗi dữ liệu...")
+
+        for sid in series_ids:
+            signal, years = self._get_series(sid)
+            
+            if signal is None or len(signal) < 3:
+                continue
+            # --- FIX: Chuẩn hóa dữ liệu (Z-score normalization) ---
+            signal_std = np.std(signal)
+            if signal_std == 0: signal_std = 1e-9
+            signal = (signal - np.mean(signal)) / signal_std
+             # -----------------------------------------------------
+            n = len(signal)
+            # Log Likelihood H0 (Không có gãy)
+            mean_0 = np.mean(signal)
+            std_0 = np.std(signal)
+            if std_0 == 0: std_0 = 1e-9
+            ll0 = -0.5 * n * np.log(2 * np.pi * std_0**2) - np.sum((signal - mean_0)**2) / (2 * std_0**2)
+
+            try:
+                data_array = np.array(signal)
+
+                # Cấu hình thuật toán
+                # Prior lambda càng lớn thì thuật toán càng ít nhạy (ít báo gãy linh tinh)
+                prior_function = partial(offcd.const_prior, l=(len(data_array) + 1))
+                observation_likelihood_function = offcd.gaussian_obs_log_likelihood
+                
+                # Chạy thuật toán
+                Q, P, Pcp = offcd.offline_changepoint_detection(
+                    data_array, 
+                    prior_function, 
+                    observation_likelihood_function, 
+                    truncate=-40
+                )
+
+                # Tính xác suất (Pcp trả về log-probability)
+                probs = np.exp(Pcp[0, :])
+                
+                # Log Likelihood H1 (Có gãy tại t)
+                ll1 = -0.5 * t * np.log(2 * np.pi * s1**2) - np.sum((seg1 - m1)**2) / (2 * s1**2)
+                ll2 = -0.5 * (n-t) * np.log(2 * np.pi * s2**2) - np.sum((seg2 - m2)**2) / (2 * s2**2)
+                    
+                    # --- SỬA ĐỔI QUAN TRỌNG: THÊM PENALTY ---
+                    # Số tham số mô hình:
+                    # H0 (Không gãy): 2 tham số (mean, std)
+                    # H1 (Có gãy): 5 tham số (mean1, std1, mean2, std2, vị trí gãy t)
+                k0 = 2
+                k1 = 5
+                    
+                    # Tính BIC (Bayesian Information Criterion)
+                    # BIC = k * ln(n) - 2 * log_likelihood
+                    # Chúng ta muốn chọn mô hình có BIC thấp hơn.
+                    # Delta BIC = BIC_0 - BIC_1
+                    # Nếu Delta BIC > 0 nghĩa là H1 tốt hơn H0
+                    
+                bic_0 = k0 * np.log(n) - 2 * ll0
+                bic_1 = k1 * np.log(n) - 2 * (ll1 + ll2)
+                    
+                    # Gain chính là độ giảm của BIC (càng lớn càng tốt)
+                gain = bic_0 - bic_1
+                    
+                if gain > max_gain:
+                    max_gain = gain
+                    best_t = t
+
+            # Tính xác suất (Calibrated Probability)
+            # Nếu gain < 0 (tức là H0 tốt hơn), prob sẽ < 0.5
+            prob = 1 / (1 + np.exp(-0.5 * max_gain))
+            
+            hit = False
+            detected_years = []
+            
+            if prob > probability_threshold and best_t is not None:
+                dy = int(years[best_t])
+                detected_years.append(dy)
+                hit = abs(dy - self.target_year) <= self.tolerance
+
+                change_point_indices = np.where(probs > probability_threshold)[0]
+                
+                detected_years = []
+                last_idx = -999
+                for idx in change_point_indices:
+                    if idx < len(years):
+                        # Lọc trùng lặp các năm sát nhau
+                        if idx - last_idx > 1: 
+                            detected_years.append(int(years[idx]))
+                            last_idx = idx
+
+                # Kiểm tra xem có trúng mục tiêu (2025) hay không
+                hit = any(abs(y - self.target_year) <= self.tolerance for y in detected_years)
+                hit_year = next((y for y in detected_years if abs(y - self.target_year) <= self.tolerance), None)
+
+                results.append({
+                    "series_id": sid,
+                    "algorithm": "Bayesian_Offline",
+                    "detected_years": detected_years,
+                    "hit_target": hit,
+                    "hit_year": hit_year,
+                    "probs": probs # Có thể bỏ comment nếu muốn lưu xác suất
+                })
+
+            except Exception as e:
+                print(f"⚠️ Lỗi xử lý Bayesian tại {sid}: {e}")
+                continue
+
+        return pd.DataFrame(results)
+    # -------------------------------------------------------------------------
+    # 4. TỔNG HỢP & PHÂN TÍCH
     # -------------------------------------------------------------------------
     def analyze_all(self):
         """Chạy cả PELT và CUSUM, tổng hợp kết quả."""
         df_pelt = self.detect_ruptures(method="pelt", pen=1) # Pen nhỏ cho chuỗi ngắn
         df_cusum = self.detect_cusum()
+        df_bayes = self.detect_bayesian(probability_threshold=0.01)
         
         # Gộp kết quả
-        final_df = pd.concat([df_pelt, df_cusum], ignore_index=True)
+        final_df = pd.concat([df_pelt, df_cusum, df_bayes], ignore_index=True)
         self.results = final_df
         return final_df
 
     # -------------------------------------------------------------------------
-    # 4. TRỰC QUAN HÓA (VISUALIZATION)
+    # 5. TRỰC QUAN HÓA (VISUALIZATION)
     # -------------------------------------------------------------------------
     def plot_enhanced(self, series_id, detected_years):
         """
