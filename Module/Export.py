@@ -439,39 +439,6 @@ class Export:
         comparison = analysis.get_statistics_by_region(city)
         comparison.to_csv(filepath, index=False)
 
-    # Xuất tổng học sinh tham gia theo năm:
-    def _export_yearly_total_students(self) -> None:
-        """
-        Tính và lưu tổng số học sinh theo từng năm từ processed data gốc.
-
-        File output:
-            <root_path>/Export_Yearly_Total_Students.csv
-
-        Cấu trúc:
-            nam_hoc, total_students
-            2023, ...
-            2024, ...
-            2025, ...
-        """
-        df = self.processor.get_processed_data()
-
-        if "nam_hoc" not in df.columns:
-            raise ValueError("Thiếu cột 'nam_hoc' trong dữ liệu nguồn.")
-        if "sbd" not in df.columns:
-            raise ValueError("Thiếu cột 'sbd' trong dữ liệu nguồn.")
-
-        # Mỗi SBD được coi là một học sinh trong 1 năm
-        yearly = (
-            df.groupby("nam_hoc")["sbd"]
-              .nunique()  # phòng trường hợp sbd trùng
-              .reset_index(name="total_students")
-              .sort_values("nam_hoc")
-        )
-
-        out_path = Path(self._root_path) / "Export_Yearly_Total_Students.csv"
-        yearly.to_csv(out_path, index=False)
-        print(f"[EXPORT] Đã lưu tổng số học sinh theo năm tại: {out_path}")
-    
     # ==================== PUBLIC API METHODS: XUẤT DỮ LIỆU VỚI RETURN ====================
     # Xuất dữ liệu điểm theo khối thi ra DataFrame
     def export_score_by_block(self, block: str) -> pd.DataFrame:
@@ -567,7 +534,3 @@ class Export:
 
             # Statistics theo tỉnh cũ
             self._export_province(prov)
-
-        # -------- 4. EXPORT TỔNG SỐ HỌC SINH THEO NĂM --------
-        self._export_yearly_total_students()
-# ==================== END OF MODULE ====================

@@ -1,20 +1,24 @@
-from pathlib import Path
-import time
-
+from Module.Load_Data import DataLoader
 from Module.Processor_Data import DataProcessor
+from Module.Analysis import Analysis
 from Module.Export import Export
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import time
+import pandas as pd
+import numpy as np
 
 
-def main() -> None:
+def main():
     """Chạy toàn bộ pipeline: Load → Process → Analyze → Export (Clean Data)."""
     start = time.perf_counter()
 
-    # 1. Xác định thư mục gốc của project (thư mục chứa file run_pipeline.py)
+    # 1. Xác định thư mục gốc của project
     project_root = Path(__file__).resolve().parent
-    print(f"[INFO] Project root: {project_root}")
 
-    # 2. Khởi tạo DataProcessor (bên trong tự khởi tạo DataLoader)
-    processor = DataProcessor(project_root=project_root)
+    # 2. Khởi tạo DataProcessor
+    processor = DataProcessor(project_root)
 
     # 3. Chạy tiền xử lý & chuẩn hóa dữ liệu
     processor.process_all()
@@ -30,8 +34,7 @@ def main() -> None:
 
     end = time.perf_counter()
     print(f"[DONE] Pipeline completed. Clean data saved at: {output_root}")
-    print(f"[INFO] Elapsed: {end - start:.2f} s")
-
+    print(f"Elapsed: {end - start:.6f} s")
 
 if __name__ == "__main__":
     main()
