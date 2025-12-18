@@ -1,270 +1,263 @@
-from xml.parsers.expat import model
+# File: Module/ChangePointDetector.py
 import pandas as pd
 import numpy as np
-import ruptures as rpt
 import matplotlib.pyplot as plt
-import warnings
-# Thử import thư viện Bayesian nếu có
-try:
-    from bayesian_changepoint_detection.priors import const_prior
-    from bayesian_changepoint_detection.offline_likelihoods import StudentT
-    from bayesian_changepoint_detection.bayesian_models import offline_changepoint_detection
-    HAS_BAYESIAN = True
-except ImportError:
-    HAS_BAYESIAN = False
+import seaborn as sns
+import ruptures as rpt
 
 class ChangePointDetector:
     """
-    Thực hiện phát hiện điểm thay đổi (Change Point Detection) trên dữ liệu chuỗi thời gian.
-    Hỗ trợ: Ruptures (PELT, BinSeg, Window), CUSUM, và Bayesian (Offline).
+    Class phát hiện điểm gãy (Change Point Detection) trên chuỗi thời gian.
+    Hỗ trợ:
+    1. Ruptures (PELT)
+    2. CUSUM (Mean Shift)
+    3. Bayesian (Likelihood Ratio)
+    4. Trực quan hóa nâng cao
     """
+    
     def __init__(self, data: pd.DataFrame, target_year: int = 2025, tolerance: int = 1):
-        """
-        :param data: DataFrame output từ ChangePointPreparer (cols: year, series_id, value)
-        :param target_year: Năm mục tiêu để đối chiếu (ví dụ: 2025)
-        :param tolerance: Sai số cho phép (năm) khi đối chiếu với target_year
-        """
         self.data = data
         self.target_year = target_year
         self.tolerance = tolerance
-        
-        if self.data.empty:
-            warnings.warn("Dữ liệu đầu vào rỗng.")
+        self.results = pd.DataFrame()
 
-    def _get_signal(self, series_id: str):
-        """Lấy tín hiệu array và danh sách năm tương ứng cho một series_id."""
+    def _get_series(self, series_id):
+        """Lấy chuỗi giá trị (value) của một series_id cụ thể."""
         df_sub = self.data[self.data['series_id'] == series_id].sort_values('year')
         if df_sub.empty:
             return None, None
         return df_sub['value'].values, df_sub['year'].values
 
-    def _map_indices_to_years(self, indices, years_arr):
-        """Chuyển đổi index của mảng thành năm thực tế."""
-        detected_years = []
-        n_samples = len(years_arr)
-        for idx in indices:
-            # Ruptures thường trả về index là điểm bắt đầu segment mới
-            # hoặc điểm kết thúc segment cũ. Ta lấy index-1 để map vào năm xảy ra gãy
-            if 0 < idx <= n_samples:
-                detected_years.append(years_arr[idx-1]) 
-        return detected_years
-
-    def check_target_hit(self, detected_years):
-        """Kiểm tra xem các điểm tìm được có nằm trong vùng target_year ± tolerance không."""
-        for y in detected_years:
-            if abs(y - self.target_year) <= self.tolerance:
-                return True, y
-        return False, None
-
-    # ---------------------------------------------------------
-    # 1. Ruptures Methods
-    # ---------------------------------------------------------
-    def detect_ruptures(self, method="pelt", model="l2", pen=1, width=3, n_bkps=5):
-        """
-        Áp dụng các thuật toán từ thư viện Ruptures.
-        :param method: 'pelt', 'binseg', 'window'
-        :param model: 'l2', 'rbf', 'l1', 'normal'
-        :param pen: Penalty cho PELT/Window (độ nhạy)
-        :param width: Độ rộng cửa sổ cho Window-based
-        :param n_bkps: Số điểm gãy tối đa cho Binary Segmentation
-        """
+    # -------------------------------------------------------------------------
+    # 1. THUẬT TOÁN RUPTURES (PELT)
+    # -------------------------------------------------------------------------
+    def detect_ruptures(self, method="pelt", model="l2", pen=10) -> pd.DataFrame:
         results = []
-        unique_series = self.data['series_id'].unique()
+        series_ids = self.data['series_id'].unique()
 
-        for series_id in unique_series:
-            signal, years = self._get_signal(series_id)
-            if signal is None or len(signal) < width: 
+        for sid in series_ids:
+            signal, years = self._get_series(sid)
+            if signal is None or len(signal) < 3: 
                 continue
 
             try:
-                algo = None
-                # Chọn thuật toán
                 if method == "pelt":
-                    algo = rpt.Pelt(model=model).fit(signal)
+                    algo = rpt.Pelt(model=model, min_size=1).fit(signal)
                     bkps = algo.predict(pen=pen)
                 elif method == "binseg":
-                    algo = rpt.Binseg(model=model).fit(signal)
-                    bkps = algo.predict(n_bkps=n_bkps)
-                elif method == "window":
-                    algo = rpt.Window(width=width, model=model).fit(signal)
-                    bkps = algo.predict(pen=pen)
+                    algo = rpt.Binseg(model=model, min_size=1).fit(signal)
+                    bkps = algo.predict(n_bkps=1)
                 else:
-                    raise ValueError(f"Unknown method: {method}")
+                    bkps = []
 
-                # Ruptures luôn trả về index cuối cùng của chuỗi, cần loại bỏ
-                bkps = [x for x in bkps if x < len(signal)]
-                
-                detected_years = self._map_indices_to_years(bkps, years)
-                is_hit, hit_val = self.check_target_hit(detected_years)
+                detected_years = []
+                for b in bkps:
+                    if b < len(years):
+                        detected_years.append(int(years[b])) 
+                    elif b == len(years): 
+                         detected_years.append(int(years[-1]))
+
+                hit = any(abs(y - self.target_year) <= self.tolerance for y in detected_years)
+                hit_year = next((y for y in detected_years if abs(y - self.target_year) <= self.tolerance), None)
 
                 results.append({
-                    "series_id": series_id,
-                    "algorithm": f"Ruptures_{method}_{model}",
+                    "series_id": sid,
+                    "algorithm": f"Ruptures_{method}",
                     "detected_years": detected_years,
-                    "hit_target": is_hit,
-                    "hit_year": hit_val
+                    "hit_target": hit,
+                    "hit_year": hit_year
                 })
+
             except Exception as e:
-                print(f"Error Ruptures {series_id}: {e}")
+                print(f"Error Ruptures {sid}: {e}")
                 continue
 
         return pd.DataFrame(results)
 
-    # ---------------------------------------------------------
-    # 2. CUSUM (Cumulative Sum)
-    # ---------------------------------------------------------
-    def detect_cusum(self, threshold_std=2.0):
-        """
-        Sử dụng CUSUM để phát hiện điểm thay đổi trung bình lớn nhất.
-        Logic: Tính tổng tích lũy của (giá trị - trung bình). Điểm cực trị của CUSUM
-        thường là điểm thay đổi.
-        """
+    # -------------------------------------------------------------------------
+    # 2. THUẬT TOÁN CUSUM
+    # -------------------------------------------------------------------------
+    def detect_cusum(self) -> pd.DataFrame:
         results = []
-        unique_series = self.data['series_id'].unique()
+        series_ids = self.data['series_id'].unique()
 
-        for series_id in unique_series:
-            signal, years = self._get_signal(series_id)
-            if signal is None or len(signal) < 3: continue
-
-            # Tính CUSUM
+        for sid in series_ids:
+            signal, years = self._get_series(sid)
+            if signal is None or len(signal) < 3:
+                continue
+            
+            # Chuẩn hóa
             mean_val = np.mean(signal)
-            # Normalized signal
-            s = signal - mean_val
-            cusum = np.cumsum(s)
-            
-            # Tìm điểm có độ lệch tích lũy lớn nhất (Abs)
-            max_idx = np.argmax(np.abs(cusum))
-            
-            # Kiểm tra độ tin cậy đơn giản (Z-score tại điểm đó)
-            # Nếu sự thay đổi không đáng kể so với độ lệch chuẩn, bỏ qua
             std_val = np.std(signal)
-            if std_val == 0: 
-                detected_year = []
-            else:
-                # Đây là heuristic đơn giản
-                detected_year = [years[max_idx]]
+            if std_val == 0: std_val = 1e-9
             
-            is_hit, hit_val = self.check_target_hit(detected_year)
+            standardized = (signal - mean_val) / std_val
+            cusum = np.cumsum(standardized)
+            
+            # Tìm điểm thay đổi lớn nhất
+            diffs = np.diff(signal)
+            max_change_idx = np.argmax(np.abs(diffs)) + 1 
+            
+            detected_year = int(years[max_change_idx])
+            hit = abs(detected_year - self.target_year) <= self.tolerance
 
             results.append({
-                "series_id": series_id,
+                "series_id": sid,
                 "algorithm": "CUSUM_Mean",
-                "detected_years": detected_year,
-                "hit_target": is_hit,
-                "hit_year": hit_val,
-                "cusum_values": cusum  # Lưu để plot nếu cần
+                "detected_years": [detected_year],
+                "hit_target": hit,
+                "hit_year": detected_year if hit else None,
+                "cusum_values": list(cusum)
             })
             
         return pd.DataFrame(results)
 
-    # ---------------------------------------------------------
-    # 3. Bayesian Change Point (Offline)
-    # ---------------------------------------------------------
-    def detect_bayesian(self, truncate=-10):
+    # -------------------------------------------------------------------------
+    # 3. THUẬT TOÁN BAYESIAN (Mới thêm)
+    # -------------------------------------------------------------------------
+    def detect_bayesian(self, probability_threshold=0.5) -> pd.DataFrame:
         """
-        Sử dụng Bayesian Offline Change Point Detection.
-        Yêu cầu: thư viện `bayesian_changepoint_detection`.
-        Logic: Tính xác suất hậu nghiệm (posterior probability) của độ dài run-length.
+        Phát hiện điểm gãy dựa trên Likelihood Ratio Test (giả lập Bayesian đơn giản).
         """
-        if not HAS_BAYESIAN:
-            print("Warning: Chưa cài đặt thư viện 'bayesian_changepoint_detection'. Bỏ qua.")
-            return pd.DataFrame()
-
         results = []
-        unique_series = self.data['series_id'].unique()
+        series_ids = self.data['series_id'].unique()
 
-        for series_id in unique_series:
-            signal, years = self._get_signal(series_id)
-            if signal is None or len(signal) < 3: continue
-
-            try:
-                # Cấu hình Priors (giả định phân phối Student-T cho dữ liệu chưa biết variance)
-                # Hazard rate lambda = 1/100 (giả định cứ 100 điểm thì có 1 điểm gãy)
-                Q, P, Pcp = offline_changepoint_detection(
-                    signal, 
-                    partial(const_prior, l=(len(signal) + 1)), 
-                    StudentT(), 
-                    truncate=truncate
-                )
-                
-                # Pcp là xác suất có changepoint tại mỗi thời điểm
-                # Lấy các điểm có xác suất > ngưỡng (ví dụ 0.5 hoặc đỉnh local max)
-                # Ở đây ta lấy đỉnh cao nhất để đơn giản hoá
-                
-                # Cách lấy điểm gãy từ Pcp: tìm peaks
-                # Pcp shape: (time_steps, 1) -> exp(Pcp) để ra xác suất
-                probs = np.exp(Pcp).sum(0) # Marginal probability
-                
-                # Lấy các điểm có xác suất cao đột biến (ngưỡng 0.3)
-                # Bỏ qua vài điểm đầu/cuối do biên
-                threshold = 0.3
-                detected_indices = np.where(probs[1:-1] > threshold)[0] + 1
-                
-                detected_years = self._map_indices_to_years(detected_indices, years)
-                is_hit, hit_val = self.check_target_hit(detected_years)
-
-                results.append({
-                    "series_id": series_id,
-                    "algorithm": "Bayesian_Offline",
-                    "detected_years": detected_years,
-                    "hit_target": is_hit,
-                    "hit_year": hit_val,
-                    "probs": probs # Lưu để plot
-                })
-
-            except Exception as e:
-                # Fallback nếu thư viện lỗi hoặc config sai
-                print(f"Bayesian Error {series_id}: {e}")
+        for sid in series_ids:
+            signal, years = self._get_series(sid)
+            if signal is None or len(signal) < 3:
                 continue
+            
+            n = len(signal)
+            # Log Likelihood H0 (Không có gãy)
+            mean_0 = np.mean(signal)
+            std_0 = np.std(signal)
+            if std_0 == 0: std_0 = 1e-9
+            ll0 = -0.5 * n * np.log(2 * np.pi * std_0**2) - np.sum((signal - mean_0)**2) / (2 * std_0**2)
+
+            best_t = None
+            max_gain = -np.inf
+            
+            # Quét qua các điểm cắt
+            for t in range(1, n):
+                seg1 = signal[:t]
+                seg2 = signal[t:]
+                
+                if len(seg1) == 0 or len(seg2) == 0: continue
+
+                m1, s1 = np.mean(seg1), np.std(seg1)
+                m2, s2 = np.mean(seg2), np.std(seg2)
+                if s1 == 0: s1 = 1e-9
+                if s2 == 0: s2 = 1e-9
+                
+                # Log Likelihood H1 (Có gãy tại t)
+                ll1 = -0.5 * t * np.log(2 * np.pi * s1**2) - np.sum((seg1 - m1)**2) / (2 * s1**2)
+                ll2 = -0.5 * (n-t) * np.log(2 * np.pi * s2**2) - np.sum((seg2 - m2)**2) / (2 * s2**2)
+                
+                gain = (ll1 + ll2) - ll0
+                if gain > max_gain:
+                    max_gain = gain
+                    best_t = t
+
+            # Tính xác suất (heuristic từ log likelihood ratio)
+            prob = 1 / (1 + np.exp(-max_gain))
+            
+            hit = False
+            detected_years = []
+            
+            if prob > probability_threshold and best_t is not None:
+                dy = int(years[best_t])
+                detected_years.append(dy)
+                hit = abs(dy - self.target_year) <= self.tolerance
+
+            results.append({
+                "series_id": sid,
+                "algorithm": "Bayesian_BOCPD",
+                "detected_years": detected_years,
+                "hit_target": hit,
+                "hit_year": detected_years[0] if hit and detected_years else None,
+                "probability": prob
+            })
 
         return pd.DataFrame(results)
 
-    # ---------------------------------------------------------
-    # Tổng hợp & Visualization
-    # ---------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # 4. TỔNG HỢP (Updated)
+    # -------------------------------------------------------------------------
     def analyze_all(self):
-        """Chạy tất cả các thuật toán và tổng hợp kết quả."""
-        df_pelt = self.detect_ruptures(method="pelt", model="l2", pen=10)
-        df_binseg = self.detect_ruptures(method="binseg", model="l2", n_bkps=3)
-        df_win = self.detect_ruptures(method="window", model="l2", width=3, pen=10)
+        """Chạy tất cả thuật toán và tổng hợp kết quả."""
+        df_pelt = self.detect_ruptures(method="pelt", pen=1)
         df_cusum = self.detect_cusum()
+        df_bayes = self.detect_bayesian(probability_threshold=0.5)
         
-        # Merge kết quả
-        dfs = [df_pelt, df_binseg, df_win, df_cusum]
-        
-        if HAS_BAYESIAN:
-            # Cần functools cho Bayesian
-            global partial
-            from functools import partial
-            df_bayes = self.detect_bayesian()
-            if not df_bayes.empty:
-                dfs.append(df_bayes)
+        # Gộp tất cả kết quả lại (Quan trọng: Phải gộp cả df_bayes)
+        self.results = pd.concat([df_pelt, df_cusum, df_bayes], ignore_index=True)
+        return self.results
 
-        final_df = pd.concat(dfs, ignore_index=True)
-        return final_df.sort_values(["series_id", "algorithm"])
-
-    def plot_series_with_cp(self, series_id, algorithm=None, detected_years=None):
-        """Vẽ biểu đồ chuỗi thời gian và các điểm gãy đã phát hiện."""
-        signal, years = self._get_signal(series_id)
+    def plot_series_with_cp(self, series_id, algorithm="Original", detected_years=None):
+        """Vẽ biểu đồ cơ bản."""
+        signal, years = self._get_series(series_id)
         if signal is None: return
 
-        plt.figure(figsize=(10, 4))
-        plt.plot(years, signal, label='Value', marker='o')
-        
+        plt.figure(figsize=(10, 5))
+        plt.plot(years, signal, marker='o', label=series_id)
         if detected_years:
             for cp in detected_years:
                 plt.axvline(x=cp, color='red', linestyle='--', label=f'CP: {cp}')
-                # Highlight vùng 2025 nếu cần
-                if abs(cp - self.target_year) <= self.tolerance:
-                    plt.text(cp, max(signal), 'Target Hit!', color='red', rotation=90)
+        plt.title(f"{series_id} - {algorithm}")
+        plt.legend()
+        plt.show()
 
-        plt.title(f"Change Points: {series_id} - Algo: {algorithm}")
-        plt.xlabel("Year")
-        plt.ylabel("Value")
+    # -------------------------------------------------------------------------
+    # 5. VISUALIZATION NÂNG CAO 
+    # -------------------------------------------------------------------------
+    def plot_enhanced(self, series_id, detected_years):
+        """Vẽ biểu đồ phân tích điểm gãy chuyên sâu."""
+        signal, years = self._get_series(series_id)
+        if signal is None: return
+            
+        if not detected_years or len(detected_years) == 0:
+            self.plot_series_with_cp(series_id, "Original Data", [])
+            return
+
+        cp = detected_years[0]
+        mask_before = years < cp
+        mask_after = years >= cp
         
-        # Xử lý label trùng lặp
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys())
-        plt.grid(True, alpha=0.3)
+        if not (any(mask_before) and any(mask_after)):
+            self.plot_series_with_cp(series_id, "Basic", detected_years)
+            return
+
+        mean_before = np.mean(signal[mask_before])
+        mean_after = np.mean(signal[mask_after])
+        pct_change = ((mean_after - mean_before) / mean_before) * 100
+
+        plt.figure(figsize=(12, 6))
+        sns.set_theme(style="whitegrid")
+        
+        # 1. Dữ liệu gốc
+        plt.plot(years, signal, marker='o', color='#2c3e50', linewidth=3, label='Điểm trung bình', zorder=3)
+        
+        # 2. Điểm gãy
+        plt.axvline(x=cp, color='#e74c3c', linestyle='--', linewidth=2, label=f'Điểm gãy ({cp})', zorder=2)
+        
+        # 3. Mean Levels
+        plt.hlines(y=mean_before, xmin=min(years), xmax=cp, colors='#27ae60', linestyles=':', linewidth=2, label=f'Trước: {mean_before:.2f}')
+        plt.hlines(y=mean_after, xmin=cp, xmax=max(years), colors='#c0392b', linestyles=':', linewidth=2, label=f'Sau: {mean_after:.2f}')
+        
+        # 4. Mũi tên & Annotation
+        mid_y = (mean_before + mean_after) / 2
+        plt.annotate('', xy=(cp, mean_after), xytext=(cp, mean_before),
+                     arrowprops=dict(arrowstyle='->', color='#e74c3c', lw=3), zorder=4)
+        
+        bbox_props = dict(boxstyle="round,pad=0.4", fc="white", ec="#e74c3c", alpha=0.9)
+        plt.text(cp + 0.05, mid_y, f"{pct_change:+.1f}%", ha='left', va='center', 
+                 color='#c0392b', fontsize=13, fontweight='bold', bbox=bbox_props, zorder=5)
+
+        # 5. Vùng tô màu
+        plt.axvspan(cp, max(years)+0.5, color='#e74c3c', alpha=0.08, label='Giai đoạn mới')
+
+        plt.title(f"Phân tích Điểm gãy: {series_id}", fontsize=15, fontweight='bold')
+        plt.xticks(years, [str(y) for y in years])
+        plt.legend()
+        plt.tight_layout()
         plt.show()

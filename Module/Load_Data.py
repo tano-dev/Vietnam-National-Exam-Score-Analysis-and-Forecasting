@@ -144,6 +144,7 @@ class DataLoader:
         df_2025_ct2018_s2 = pd.read_excel(
             self.thpt2025_ct2018_xlsx_path, engine="openpyxl", sheet_name="Sheet2"
         )
+ 
         df_2025_ct2018 = pd.concat([df_2025_ct2018_s1, df_2025_ct2018_s2], ignore_index=True)
         
         # trả về 4 DataFrame
