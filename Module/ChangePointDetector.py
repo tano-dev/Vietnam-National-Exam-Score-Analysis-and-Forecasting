@@ -126,7 +126,11 @@ class ChangePointDetector:
             signal, years = self._get_series(sid)
             if signal is None or len(signal) < 3:
                 continue
-            
+            # --- FIX: Chuẩn hóa dữ liệu (Z-score normalization) ---
+            signal_std = np.std(signal)
+            if signal_std == 0: signal_std = 1e-9
+            signal = (signal - np.mean(signal)) / signal_std
+             # -----------------------------------------------------
             n = len(signal)
             # Log Likelihood H0 (Không có gãy)
             mean_0 = np.mean(signal)
@@ -152,14 +156,33 @@ class ChangePointDetector:
                 # Log Likelihood H1 (Có gãy tại t)
                 ll1 = -0.5 * t * np.log(2 * np.pi * s1**2) - np.sum((seg1 - m1)**2) / (2 * s1**2)
                 ll2 = -0.5 * (n-t) * np.log(2 * np.pi * s2**2) - np.sum((seg2 - m2)**2) / (2 * s2**2)
-                
-                gain = (ll1 + ll2) - ll0
+                    
+                    # --- SỬA ĐỔI QUAN TRỌNG: THÊM PENALTY ---
+                    # Số tham số mô hình:
+                    # H0 (Không gãy): 2 tham số (mean, std)
+                    # H1 (Có gãy): 5 tham số (mean1, std1, mean2, std2, vị trí gãy t)
+                k0 = 2
+                k1 = 5
+                    
+                    # Tính BIC (Bayesian Information Criterion)
+                    # BIC = k * ln(n) - 2 * log_likelihood
+                    # Chúng ta muốn chọn mô hình có BIC thấp hơn.
+                    # Delta BIC = BIC_0 - BIC_1
+                    # Nếu Delta BIC > 0 nghĩa là H1 tốt hơn H0
+                    
+                bic_0 = k0 * np.log(n) - 2 * ll0
+                bic_1 = k1 * np.log(n) - 2 * (ll1 + ll2)
+                    
+                    # Gain chính là độ giảm của BIC (càng lớn càng tốt)
+                gain = bic_0 - bic_1
+                    
                 if gain > max_gain:
                     max_gain = gain
                     best_t = t
 
-            # Tính xác suất (heuristic từ log likelihood ratio)
-            prob = 1 / (1 + np.exp(-max_gain))
+            # Tính xác suất (Calibrated Probability)
+            # Nếu gain < 0 (tức là H0 tốt hơn), prob sẽ < 0.5
+            prob = 1 / (1 + np.exp(-0.5 * max_gain))
             
             hit = False
             detected_years = []
