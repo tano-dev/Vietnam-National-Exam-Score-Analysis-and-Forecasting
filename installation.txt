@@ -1,5 +1,32 @@
-matplotlib
-pandas
-numpy
-scipy
-seaborn
+# Installation (Windows/macOS/Linux)
+
+## 1) Create virtual environment
+### Option A — venv (recommended)
+cd PythonProject
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+
+## 2) Install dependencies
+pip install -U pip
+pip install -r requirements.txt
+
+## 3) Run pipeline (Raw → Clean)
+python run_pipeline.py
+
+## 4) Open notebooks / report
+jupyter notebook
+# or: jupyter lab
+
+Open:
+- Notebook/EDA.ipynb
+- Notebook/ChangePoint.ipynb
+- Notebook/Forecast2026.ipynb
+- Report/ReportProject.ipynb
+
+## Notes
+- If you do NOT use notebooks, you may skip installing jupyter/notebook.
+- Dashboard/ is not required for grading.
