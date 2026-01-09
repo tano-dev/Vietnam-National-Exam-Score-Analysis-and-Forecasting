@@ -443,4 +443,48 @@ class CleanDataLoader(DataLoader):
         if not path.exists():
             raise FileNotFoundError(f"File dữ liệu tỉnh/thành không tồn tại: {path}")
         return pd.read_csv(path)
-    
+    def list_subjects(self) -> list[str]:
+        """Liệt kê tất cả các môn thi có trong dữ liệu CLEAN.
+
+        Returns
+        -------
+        list[str]
+            Danh sách các môn thi.
+        """
+        subject_dir = self.subject_data_root
+        subjects = []
+        for folder in subject_dir.iterdir():
+            if folder.is_dir() and folder.name.startswith(self._subject_data_f_prefix + "_"):
+                subject_name = folder.name.split("_", 1)[1]
+                subjects.append(subject_name)
+        return subjects
+    def list_blocks(self) -> list[str]:
+        """Liệt kê tất cả các khối thi có trong dữ liệu CLEAN.
+
+        Returns
+        -------
+        list[str]
+            Danh sách các khối thi (mã khối).
+        """
+        block_dir = self.block_data_root
+        blocks = []
+        for folder in block_dir.iterdir():
+            if folder.is_dir() and folder.name.startswith(self._block_data_f_prefix + "_"):
+                block_code = folder.name.split("_", 1)[1]
+                blocks.append(block_code)
+        return blocks
+    def list_provinces(self) -> list[str]:
+        """Liệt kê tất cả các tỉnh/thành có trong dữ liệu CLEAN.
+
+        Returns
+        -------
+        list[str]
+            Danh sách các tỉnh/thành (mã tỉnh/thành).
+        """
+        province_dir = self.province_data_root
+        provinces = []
+        for folder in province_dir.iterdir():
+            if folder.is_dir() and folder.name.startswith(self._province_data_f_prefix + "_"):
+                province_code = folder.name.split("_", 1)[1]
+                provinces.append(province_code)
+        return provinces
