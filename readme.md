@@ -38,25 +38,34 @@ Dự án này xây dựng **pipeline dữ liệu + phân tích + phát hiện đ
 
 ```
 PythonProject/
-├─ Raw_Data/                     # dữ liệu thô 2023–2025
-├─ Clean_Data_2023-2025/          # dữ liệu đã export theo cấu trúc chuẩn
-├─ Module/                        # Load/Process/Analysis/Export/ANOVA
+├─ Raw_Data/                       # dữ liệu thô 2023–2025
+├─ Clean_Data_2023-2025/            # dữ liệu đã export theo cấu trúc chuẩn
+├─ Module/                          # ETL + Stats (Load/Process/Analysis/Export/ANOVA)
 │  ├─ Load_Data.py
 │  ├─ Processor_Data.py
 │  ├─ Analysis.py
 │  ├─ Export.py
 │  └─ ANOVA_ttest.py
-├─ Model/                         # Change point + Forecast
-│  ├─ ChangePointPreparer.py
-│  ├─ ChangePointDetector.py
-│  ├─ ChangePointAnalyzer.py
-│  ├─ ForecastSubjectModel.py
-│  └─ ForecastBlockModel.py
-├─ Notebook/                      # notebook làm việc/triển khai
-├─ Report/                        # notebook báo cáo
-├─ run_pipeline.py                # chạy end-to-end: Load → Process → Export
-├─ requirements.txt               # dependency
-└─ installation.txt               # hướng dẫn cài đặt
+├─ Model/                           # Modeling layer
+│  ├─ ChangePoint/                  # phát hiện & phân tích điểm gãy
+│  │  ├─ __init__.py
+│  │  ├─ ChangePointPreparer.py
+│  │  ├─ ChangePointDetector.py
+│  │  └─ ChangePointAnalyzer.py
+│  └─ Forecast/                     # dự báo 2026 (theo môn/khối)
+│     ├─ __init__.py
+│     ├─ ForecastSubjectModel.py
+│     └─ ForecastBlockModel.py
+├─ Notebook/                        # notebook làm việc/triển khai
+│  ├─ EDA.ipynb
+│  ├─ ChangePoint.ipynb
+│  └─ Forecast.ipynb
+├─ Report/                          # notebook báo cáo
+│  └─ ReportProject.ipynb
+├─ run_pipeline.py                  # chạy end-to-end: Load → Process → Export
+├─ requirements.txt                 # dependencies
+└─ installation.txt                 # hướng dẫn cài đặt
+
 ```
 
 ---
