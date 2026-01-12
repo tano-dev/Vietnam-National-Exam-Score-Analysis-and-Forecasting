@@ -1,0 +1,11 @@
+%%writefile requirements_colab.txt
+numpy>=1.23
+pandas>=1.5
+scipy>=1.10
+matplotlib>=3.7
+seaborn>=0.12
+scikit-learn>=1.2
+statsmodels>=0.14
+xgboost>=1.7
+ruptures>=1.1.8
+# Do NOT install ipython/jupyter/notebook on Colab
