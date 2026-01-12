@@ -1,4 +1,4 @@
-# Vietnam National Exam Score Analysis & Forecast 2026 (Python Project for Data science)
+# Vietnam National Exam Score Analysis & Forecasting (Python Project for Data science)
 
 Dự án này xây dựng **pipeline dữ liệu + phân tích + phát hiện điểm gãy + dự báo** trên dữ liệu điểm thi THPT giai đoạn **2023–2025**, với mục tiêu dự báo xu hướng **2026**.  
 > Lưu ý: thư mục **Dashboard/** không nằm trong phạm vi đánh giá (có thể bỏ qua khi chấm môn).
