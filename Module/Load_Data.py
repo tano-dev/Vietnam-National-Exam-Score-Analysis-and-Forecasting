@@ -19,6 +19,16 @@ class DataLoader:
 
     Read-only properties (tính động từ project_root)
     ------------------------------------------------
+    thpt2018_ct2006_csv_path : Path
+        Đường dẫn tới file CSV điểm thi 2018 (CT2006).
+    thpt2019_ct2006_csv_path : Path
+        Đường dẫn tới file CSV điểm thi 2019 (CT2006).
+    thpt2020_ct2006_csv_path : Path
+        Đường dẫn tới file CSV điểm thi 2020 (CT2006).
+    thpt2021_ct2006_csv_path : Path
+        Đường dẫn tới file CSV điểm thi 2021 (CT2006).
+    thpt2022_ct2006_csv_path : Path
+        Đường dẫn tới file CSV điểm thi 2022 (CT2006).
     thpt2023_ct2006_csv_path : Path
         Đường dẫn tới file CSV điểm thi 2023 (CT2006).
     thpt2024_ct2006_csv_path : Path
@@ -36,11 +46,21 @@ class DataLoader:
         "_dataset_dir",                         # tên thư mục chứa dữ liệu RAW
         
         # Tên thư mục/file chuẩn hóa để dễ đổi nếu cần
+        "_set2018",                             # tên thư mục dữ liệu năm 2018
+        "_set2019",                             # tên thư mục dữ liệu năm 2019   
+        "_set2020",                             # tên thư mục dữ liệu năm 2020
+        "_set2021",                             # tên thư mục dữ liệu năm 2021
+        "_set2022",                             # tên thư mục dữ liệu năm 2022
         "_set2023",                             # tên thư mục dữ liệu năm 2023
         "_set2024",                             # tên thư mục dữ liệu năm 2024
         "_set2025",                             # tên thư mục dữ liệu năm 2025
         
         # tên file dữ liệu
+        "_f_2018_ct2006",                       # tên file dữ liệu năm 2018
+        "_f_2019_ct2006",                       # tên file dữ liệu năm 2019
+        "_f_2020_ct2006",                       # tên file dữ liệu năm 2020
+        "_f_2021_ct2006",                       # tên file dữ liệu năm 2021
+        "_f_2022_ct2006",                       # tên file dữ liệu năm 2022
         "_f_2023_ct2006",                       # tên file dữ liệu năm 2023
         "_f_2024_ct2006",                       # tên file dữ liệu năm 2024
         "_f_2025_ct2006",                       # tên file dữ liệu năm 2025 CT2006
@@ -60,10 +80,20 @@ class DataLoader:
         # tên thư mục/file chuẩn hóa để dễ đổi nếu cần
         self._dataset_dir = "Raw_Data"
 
+        self._set2018 = "Data_Set_2018"
+        self._set2019 = "Data_Set_2019"
+        self._set2020 = "Data_Set_2020"
+        self._set2021 = "Data_Set_2021"
+        self._set2022 = "Data_Set_2022"
         self._set2023 = "Data_Set_2023"
         self._set2024 = "Data_Set_2024"
         self._set2025 = "Data_Set_2025"
 
+        self._f_2018_ct2006 = "diem_thi_thpt_2018.csv"
+        self._f_2019_ct2006 = "diem_thi_thpt_2019.csv"
+        self._f_2020_ct2006 = "diem_thi_thpt_2020.csv"
+        self._f_2021_ct2006 = "diem_thi_thpt_2021.csv"
+        self._f_2022_ct2006 = "diem_thi_thpt_2022.csv"
         self._f_2023_ct2006 = "diem_thi_thpt_2023.csv"
         self._f_2024_ct2006 = "diem_thi_thpt_2024.csv"
         self._f_2025_ct2006 = "diem_thi_thpt_2025-ct2006.xlsx"
@@ -84,6 +114,41 @@ class DataLoader:
         # Không cần cập nhật đường dẫn lẻ vì chúng được tính động bên dưới.
 
     # ==================== Đường dẫn chỉ-đọc tới file RAW ====================
+    @property
+    def thpt2018_ct2006_csv_path(self) -> Path:
+        """Đường dẫn tới dữ liệu THPT 2018 (CT2006)."""
+        return (
+            self.project_root / self._dataset_dir / self._set2018 / self._f_2018_ct2006
+        )
+    
+    @property
+    def thpt2019_ct2006_csv_path(self) -> Path:
+        """Đường dẫn tới dữ liệu THPT 2019 (CT2006)."""
+        return (
+            self.project_root / self._dataset_dir / self._set2019 / self._f_2019_ct2006
+        )
+    
+    @property
+    def thpt2020_ct2006_csv_path(self) -> Path:
+        """Đường dẫn tới dữ liệu THPT 2020 (CT2006)."""
+        return (
+            self.project_root / self._dataset_dir / self._set2020 / self._f_2020_ct2006
+        )
+    
+    @property
+    def thpt2021_ct2006_csv_path(self) -> Path:
+        """Đường dẫn tới dữ liệu THPT 2021 (CT2006)."""
+        return (
+            self.project_root / self._dataset_dir / self._set2021 / self._f_2021_ct2006
+        )
+        
+    @property
+    def thpt2022_ct2006_csv_path(self) -> Path:
+        """Đường dẫn tới dữ liệu THPT 2022 (CT2006)."""
+        return (
+            self.project_root / self._dataset_dir / self._set2022 / self._f_2022_ct2006
+        )
+    
     @property
     def thpt2023_ct2006_csv_path(self) -> Path:
         """Đường dẫn tới dữ liệu THPT 2023 (CT2006)."""
@@ -119,10 +184,15 @@ class DataLoader:
         Returns
         -------
         tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]
-            (df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018)
+            (,df_2018_ct2006, df_2019_ct2006, df_2020_ct2006, df_2021_ct2006, df_2022_ct2006, df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018)
         """
         # Kiểm tra sự tồn tại của file
         paths = [
+            self.thpt2018_ct2006_csv_path,
+            self.thpt2019_ct2006_csv_path,
+            self.thpt2020_ct2006_csv_path,
+            self.thpt2021_ct2006_csv_path,
+            self.thpt2022_ct2006_csv_path,
             self.thpt2023_ct2006_csv_path,
             self.thpt2024_ct2006_csv_path,
             self.thpt2025_ct2006_xlsx_path,
@@ -133,6 +203,11 @@ class DataLoader:
                 raise FileNotFoundError(f"File dữ liệu không tồn tại: {p}")
 
         # đọc dữ liệu vào DataFrames
+        df_2018_ct2006 = pd.read_csv(self.thpt2018_ct2006_csv_path, encoding="utf-8")
+        df_2019_ct2006 = pd.read_csv(self.thpt2019_ct2006_csv_path, encoding="utf-8")
+        df_2020_ct2006 = pd.read_csv(self.thpt2020_ct2006_csv_path, encoding="utf-8")
+        df_2021_ct2006 = pd.read_csv(self.thpt2021_ct2006_csv_path, encoding="utf-8")
+        df_2022_ct2006 = pd.read_csv(self.thpt2022_ct2006_csv_path, encoding="utf-8")
         df_2023_ct2006 = pd.read_csv(self.thpt2023_ct2006_csv_path, encoding="utf-8")
         df_2024_ct2006 = pd.read_csv(self.thpt2024_ct2006_csv_path, encoding="utf-8")
         df_2025_ct2006 = pd.read_excel(
@@ -147,8 +222,8 @@ class DataLoader:
  
         df_2025_ct2018 = pd.concat([df_2025_ct2018_s1, df_2025_ct2018_s2], ignore_index=True)
         
-        # trả về 4 DataFrame
-        return df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018  
+        # trả về 9 DataFrame
+        return df_2018_ct2006, df_2019_ct2006, df_2020_ct2006, df_2021_ct2006, df_2022_ct2006, df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018  
     
     # ==================== PUBLIC API ====================
     def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -157,7 +232,7 @@ class DataLoader:
         Returns
         -------
         tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]
-            (df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018)
+            (df_2018_ct2006, df_2019_ct2006, df_2020_ct2006, df_2021_ct2006, df_2022_ct2006, df_2023_ct2006, df_2024_ct2006, df_2025_ct2006, df_2025_ct2018)
         """
         return self._load_data()
     
